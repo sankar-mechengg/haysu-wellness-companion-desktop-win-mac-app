@@ -1,0 +1,76 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserProfile {
+    pub id: i64,
+    pub name: String,
+    pub age: i64,
+    pub weight_kg: f64,
+    pub height_cm: f64,
+    pub occupation: String,
+    pub work_style: String,
+    pub daily_water_ml: i64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Setting {
+    pub key: String,
+    pub value: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WaterEntry {
+    pub id: i64,
+    pub timestamp: String,
+    pub consumed: bool,
+    pub amount_ml: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MovementEntry {
+    pub id: i64,
+    pub timestamp: String,
+    pub exercise_id: String,
+    pub exercise_name: String,
+    pub category: String,
+    pub completed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PomodoroEntry {
+    pub id: i64,
+    pub started_at: String,
+    pub ended_at: Option<String>,
+    pub session_type: String,
+    pub completed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DailyStats {
+    pub date: String,
+    pub water_consumed: i64,
+    pub water_skipped: i64,
+    pub water_total_ml: i64,
+    pub water_goal_ml: i64,
+    pub movement_completed: i64,
+    pub movement_skipped: i64,
+    pub pomodoro_work_completed: i64,
+    pub pomodoro_total_minutes: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WeeklyStats {
+    pub days: Vec<DailyStats>,
+    pub week_start: String,
+    pub week_end: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TimerState {
+    pub timer_type: String,
+    pub remaining_secs: u64,
+    pub is_running: bool,
+    pub next_reminder: String,
+}

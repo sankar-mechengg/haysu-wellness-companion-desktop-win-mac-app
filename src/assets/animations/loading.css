@@ -1,0 +1,120 @@
+/* ─── Haysu H Logo Loading Animations ─── */
+
+/* Full spin animation for loading state */
+.haysu-loading {
+  animation: haysu-spin 1.2s ease-in-out infinite;
+}
+
+@keyframes haysu-spin {
+  0% {
+    transform: rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: rotate(180deg);
+    opacity: 0.6;
+  }
+  100% {
+    transform: rotate(360deg);
+    opacity: 1;
+  }
+}
+
+/* Pulse glow for active reminders */
+.haysu-glow {
+  animation: haysu-glow 2s ease-in-out infinite;
+}
+
+@keyframes haysu-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(59, 147, 247, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(59, 147, 247, 0.6));
+  }
+}
+
+/* Bounce entrance for popups */
+.haysu-bounce-in {
+  animation: haysu-bounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes haysu-bounce {
+  0% {
+    transform: scale(0.3) translateY(-20px);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05) translateY(0);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Slide in from top for reminder popups */
+.haysu-slide-down {
+  animation: haysu-slide-down 0.4s ease-out forwards;
+}
+
+@keyframes haysu-slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Slide out to top for dismissing popups */
+.haysu-slide-up {
+  animation: haysu-slide-up 0.3s ease-in forwards;
+}
+
+@keyframes haysu-slide-up {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+/* Water ripple effect */
+.haysu-ripple {
+  animation: haysu-ripple 1.5s ease-out infinite;
+}
+
+@keyframes haysu-ripple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(96, 184, 255, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(96, 184, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(96, 184, 255, 0);
+  }
+}
+
+/* Timer countdown pulse — subtle ring expansion */
+.haysu-timer-pulse {
+  animation: haysu-timer-pulse 1s ease-out;
+}
+
+@keyframes haysu-timer-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 147, 247, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(59, 147, 247, 0);
+  }
+}

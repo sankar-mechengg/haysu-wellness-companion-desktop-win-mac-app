@@ -30,19 +30,23 @@ export default function FloatingWidget() {
     win.setSize(new LogicalSize(w, h)).catch(() => {});
   }, [expanded]);
 
-  // Load initial timer states
+  // Load initial timer states and apply saved always-on-top setting
   useEffect(() => {
     const load = async () => {
       try {
-        const [water, move, pomo] = await Promise.all([
+        const [water, move, pomo, settings] = await Promise.all([
           api.getWaterTimerState(),
           api.getMovementTimerState(),
           api.getPomodoroState(),
+          api.getAllSettings(),
         ]);
         setWaterSecs(water.remaining_secs);
         setMoveSecs(move.remaining_secs);
         setPomoSecs(pomo.remaining_secs);
         setPomoPhase(pomo.phase);
+        const onTop = settings.widget_always_on_top !== "false";
+        const win = getCurrentWindow();
+        await win.setAlwaysOnTop(onTop);
       } catch {
         // Backend not ready yet
       }

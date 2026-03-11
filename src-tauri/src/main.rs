@@ -22,6 +22,16 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            // Second launch: show widget or onboarding and bring to front
+            if let Some(win) = app.get_webview_window("widget") {
+                let _ = win.show();
+                let _ = win.set_focus();
+            } else if let Some(win) = app.get_webview_window("onboarding") {
+                let _ = win.show();
+                let _ = win.set_focus();
+            }
+        }))
         // ─── Setup ───
         .setup(|app| {
             let handle = app.handle().clone();
@@ -60,8 +70,8 @@ fn main() {
             // Check onboarding and show appropriate window
             let app_handle2 = handle.clone();
             tauri::async_runtime::spawn(async move {
-                // Small delay to let windows initialize
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                // Delay to let windows and webview initialize (longer on first run after install)
+                tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
 
                 let onboarding_complete = {
                     let db = app_handle2.state::<init::DbState>();
@@ -78,6 +88,7 @@ fn main() {
                     println!("[Haysu] Onboarding complete, showing widget");
                     if let Some(win) = app_handle2.get_webview_window("widget") {
                         let _ = win.show();
+                        let _ = win.set_focus();
                     }
                 }
             });

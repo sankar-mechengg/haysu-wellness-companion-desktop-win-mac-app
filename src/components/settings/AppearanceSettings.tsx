@@ -3,7 +3,7 @@ import Toggle from "../common/Toggle";
 import Card from "../common/Card";
 import { useTheme } from "../../hooks/useTheme";
 import { useSettings } from "../../hooks/useSettings";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Window as TauriWindow } from "@tauri-apps/api/window";
 
 export default function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
@@ -26,12 +26,33 @@ export default function AppearanceSettings() {
   const handleWidgetOnTop = useCallback(async (checked: boolean) => {
     setWidgetOnTop(checked);
     await updateSetting("widget_always_on_top", String(checked));
-    // Note: actual window always-on-top change would need Tauri command
+    // Apply to widget window immediately
+    try {
+      const widgetWin = await TauriWindow.getByLabel("widget");
+      if (widgetWin) {
+        await widgetWin.setAlwaysOnTop(checked);
+      }
+    } catch {
+      // Widget may not exist yet
+    }
   }, [updateSetting]);
 
   const handleWidgetVisible = useCallback(async (checked: boolean) => {
     setWidgetVisible(checked);
     await updateSetting("widget_visible", String(checked));
+    try {
+      const widgetWin = await TauriWindow.getByLabel("widget");
+      if (widgetWin) {
+        if (checked) {
+          await widgetWin.show();
+          await widgetWin.setFocus();
+        } else {
+          await widgetWin.hide();
+        }
+      }
+    } catch {
+      // Widget may not exist yet
+    }
   }, [updateSetting]);
 
   return (

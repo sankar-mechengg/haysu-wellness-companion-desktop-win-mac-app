@@ -47,8 +47,7 @@
         "resizable": true,
         "transparent": true,
         "skipTaskbar": true,
-        "x": 600,
-        "y": 10,
+        "center": true,
         "url": "/?window=widget"
       },
       {

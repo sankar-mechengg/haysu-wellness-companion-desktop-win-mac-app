@@ -1,16 +1,11 @@
-import { useEffect } from "react";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
-import { useTheme } from "../hooks/useTheme";
-import { useUserProfile } from "../hooks/useUserProfile";
+import { Toaster } from "../components/common/Toast";
 
 export default function DashboardWindow() {
-  const { initTheme } = useTheme();
-  const { loadProfile } = useUserProfile();
-
-  useEffect(() => {
-    initTheme();
-    loadProfile();
-  }, [initTheme, loadProfile]);
-
-  return <DashboardLayout />;
+  return (
+    <>
+      <DashboardLayout />
+      <Toaster />
+    </>
+  );
 }

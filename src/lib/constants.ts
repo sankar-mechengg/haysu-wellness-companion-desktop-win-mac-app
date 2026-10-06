@@ -1,32 +1,18 @@
-// ─── Default Intervals (minutes) ───
-export const DEFAULT_WATER_INTERVAL = 30;
-export const DEFAULT_MOVEMENT_INTERVAL = 45;
-export const DEFAULT_POMODORO_WORK = 25;
-export const DEFAULT_POMODORO_SHORT_BREAK = 5;
-export const DEFAULT_POMODORO_LONG_BREAK = 15;
-export const DEFAULT_POMODORO_SESSIONS = 4;
-export const DEFAULT_WATER_AMOUNT_ML = 250;
+import type { WorkStyle } from "./api";
 
-// ─── Adaptive Intervals by Work Style ───
-export const ADAPTIVE_INTERVALS = {
-  sedentary: { water: 25, movement: 35 },
-  moderate: { water: 30, movement: 45 },
-  active: { water: 40, movement: 60 },
-} as const;
-
-// ─── Water Calculation ───
+// ─── Water calculation ───
 export const WATER_ML_PER_KG = 35;
 export const WATER_MIN_ML = 1500;
 export const WATER_MAX_ML = 5000;
 
-// ─── Hotkeys ───
-export const HOTKEYS = {
-  togglePomodoro: { label: "Ctrl+Shift+J", mac: "⌘+Shift+J" },
-  toggleDnd: { label: "Ctrl+Shift+K", mac: "⌘+Shift+K" },
-} as const;
+// ─── Adaptive intervals by work style (minutes) ───
+export const ADAPTIVE_INTERVALS: Record<WorkStyle, { water: number; movement: number }> = {
+  sedentary: { water: 25, movement: 35 },
+  moderate: { water: 30, movement: 45 },
+  active: { water: 40, movement: 60 },
+};
 
-// ─── Work Styles ───
-export const WORK_STYLES = [
+export const WORK_STYLES: { id: WorkStyle; label: string; description: string; emoji: string }[] = [
   {
     id: "sedentary",
     label: "Sedentary",
@@ -35,7 +21,7 @@ export const WORK_STYLES = [
   },
   {
     id: "moderate",
-    label: "Moderately Active",
+    label: "Moderately active",
     description: "Mix of desk work and light movement, occasional walks",
     emoji: "🚶",
   },
@@ -45,9 +31,8 @@ export const WORK_STYLES = [
     description: "Frequently moving, standing desk, regular exercise breaks",
     emoji: "🏃",
   },
-] as const;
+];
 
-// ─── Occupations (common presets) ───
 export const OCCUPATIONS = [
   "Software Developer",
   "Designer",
@@ -62,40 +47,56 @@ export const OCCUPATIONS = [
   "Other",
 ] as const;
 
-// ─── Encouraging Messages ───
+export const WATER_QUICK_AMOUNTS = [150, 250, 350, 500] as const;
+
+export const WEEKDAYS: { id: number; short: string; long: string }[] = [
+  { id: 1, short: "Mon", long: "Monday" },
+  { id: 2, short: "Tue", long: "Tuesday" },
+  { id: 3, short: "Wed", long: "Wednesday" },
+  { id: 4, short: "Thu", long: "Thursday" },
+  { id: 5, short: "Fri", long: "Friday" },
+  { id: 6, short: "Sat", long: "Saturday" },
+  { id: 7, short: "Sun", long: "Sunday" },
+];
+
+// ─── Encouraging messages ───
 export const WATER_MESSAGES = [
-  "Time for a glass of water! 💧",
-  "Stay hydrated — your body thanks you!",
+  "Time for a glass of water 💧",
+  "Stay hydrated. Your body thanks you.",
   "Water break! Even a few sips help.",
-  "Your brain is 75% water. Feed it! 🧠",
-  "Hydration check! Drink up.",
-  "A sip a time keeps the fatigue away.",
-  "Water o'clock! Keep that flow going.",
-  "Your cells are thirsty. Cheers! 🥤",
+  "Your brain is 75% water. Feed it 🧠",
+  "Hydration check. Drink up.",
+  "A sip at a time keeps the fatigue away.",
+  "Water o'clock. Keep that flow going.",
+  "Your cells are thirsty. Cheers 🥤",
 ];
 
 export const MOVEMENT_MESSAGES = [
-  "Time to stretch! Your body needs a break.",
-  "Movement moment! Let's get those muscles going.",
-  "Stand up, stretch out, feel alive! 🌿",
-  "Your body was made to move. Let's go!",
-  "Quick exercise break — you've earned it.",
-  "Shake it off! A little movement goes a long way.",
+  "Time to stretch. Your body needs a break.",
+  "Movement moment. Let's get those muscles going.",
+  "Stand up, stretch out, feel alive 🌿",
+  "Your body was made to move.",
+  "Quick exercise break. You've earned it.",
+  "Shake it off. A little movement goes a long way.",
 ];
 
 export const POMODORO_WORK_COMPLETE_MESSAGES = [
-  "Great focus session! Time for a well-earned break.",
-  "25 minutes of pure focus. Nice work! ☕",
-  "Work session done! Relax for a bit.",
+  "Great focus session. Time for a well-earned break.",
+  "Pure focus, nicely done ☕",
+  "Work session done. Relax for a bit.",
 ];
 
 export const POMODORO_BREAK_COMPLETE_MESSAGES = [
-  "Break's over! Ready to crush it again?",
-  "Refreshed? Let's get back to it! 🎯",
-  "Time to focus — you've got this!",
+  "Break's over. Ready to go again?",
+  "Refreshed? Let's get back to it 🎯",
+  "Time to focus. You've got this.",
 ];
 
-/** Pick a random message from an array */
 export function randomMessage(messages: readonly string[]): string {
   return messages[Math.floor(Math.random() * messages.length)];
 }
+
+export const RELEASES_URL =
+  "https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app/releases";
+export const REPO_URL =
+  "https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app";

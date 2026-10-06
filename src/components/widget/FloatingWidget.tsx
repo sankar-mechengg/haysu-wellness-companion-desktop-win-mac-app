@@ -1,187 +1,249 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
-import { useTauriEvent } from "../../hooks/useTauriEvent";
-import { useAppStore } from "../../store/appStore";
-import { formatTime, nextReminderLabel } from "../../lib/waterCalc";
-import { api } from "../../lib/tauriApi";
+import { ask } from "@tauri-apps/plugin-dialog";
+import { api, errorMessage } from "../../lib/api";
+import { formatClock, formatDurationShort } from "../../lib/format";
+import { checkForUpdate, installUpdate } from "../../lib/updater";
+import { useAppStore, useConfig, useLive } from "../../store/appStore";
 import AnimatedH from "../common/AnimatedH";
 
-interface TimerTick {
-  timer_type: string;
-  remaining_secs: number;
-  total_secs: number;
-}
+const WIDTH = 260;
+const COMPACT_H = 56;
+const EXPANDED_H = 196;
 
 export default function FloatingWidget() {
-  const [waterSecs, setWaterSecs] = useState(30 * 60);
-  const [moveSecs, setMoveSecs] = useState(45 * 60);
-  const [pomoSecs, setPomoSecs] = useState(0);
-  const [pomoPhase, setPomoPhase] = useState("idle");
-  const dndEnabled = useAppStore((s) => s.dndEnabled);
+  const live = useLive();
+  const config = useConfig();
+  const updateAvailable = useAppStore((s) => s.updateAvailable);
+  const setUpdateAvailable = useAppStore((s) => s.setUpdateAvailable);
   const [expanded, setExpanded] = useState(false);
+  const [installing, setInstalling] = useState<number | null>(null);
 
-  const COMPACT_W = 240, COMPACT_H = 52;
-  const EXPANDED_W = 240, EXPANDED_H = 148;
-
-  // Resize the Tauri window when expanding/collapsing
+  // Resize the native window with the content.
   useEffect(() => {
-    const win = getCurrentWindow();
-    const [w, h] = expanded ? [EXPANDED_W, EXPANDED_H] : [COMPACT_W, COMPACT_H];
-    win.setSize(new LogicalSize(w, h)).catch(() => {});
+    getCurrentWindow()
+      .setSize(new LogicalSize(WIDTH, expanded ? EXPANDED_H : COMPACT_H))
+      .catch(() => {});
   }, [expanded]);
 
-  // Load initial timer states and apply saved always-on-top setting
+  // Silent update check shortly after launch.
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [water, move, pomo, settings] = await Promise.all([
-          api.getWaterTimerState(),
-          api.getMovementTimerState(),
-          api.getPomodoroState(),
-          api.getAllSettings(),
-        ]);
-        setWaterSecs(water.remaining_secs);
-        setMoveSecs(move.remaining_secs);
-        setPomoSecs(pomo.remaining_secs);
-        setPomoPhase(pomo.phase);
-        const onTop = settings.widget_always_on_top !== "false";
-        const win = getCurrentWindow();
-        await win.setAlwaysOnTop(onTop);
-      } catch {
-        // Backend not ready yet
-      }
-    };
-    load();
-  }, []);
+    if (!config?.check_updates_on_launch) return;
+    const t = setTimeout(() => {
+      checkForUpdate().then((u) => u && setUpdateAvailable({ version: u.version, notes: u.notes }));
+    }, 8000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config?.check_updates_on_launch]);
 
-  // Listen for timer ticks
-  useTauriEvent<TimerTick>("timer-tick", (payload) => {
-    if (payload.timer_type === "water") {
-      setWaterSecs(payload.remaining_secs);
-    } else if (payload.timer_type === "movement") {
-      setMoveSecs(payload.remaining_secs);
-    } else if (payload.timer_type.startsWith("pomodoro_")) {
-      setPomoSecs(payload.remaining_secs);
-    }
-  });
-
-  // Listen for pomodoro phase changes
-  useTauriEvent<{ phase: string; remaining_secs: number }>("pomodoro-phase", (payload) => {
-    setPomoPhase(payload.phase);
-    setPomoSecs(payload.remaining_secs);
-  });
-
-  // Listen for DND toggle from hotkey
-  useTauriEvent<string>("hotkey-action", (action) => {
-    if (action === "toggle_dnd") {
-      useAppStore.getState().toggleDnd();
-    } else if (action === "toggle_pomodoro") {
-      api.togglePomodoro().catch(console.error);
-    }
-  });
-
-  // Determine what to show as the primary timer
-  const getNextReminder = useCallback(() => {
-    if (pomoPhase !== "idle") {
-      const pomoType = `pomodoro_${pomoPhase}`;
-      return { type: pomoType, secs: pomoSecs };
-    }
-
-    if (waterSecs <= moveSecs) {
-      return { type: "water", secs: waterSecs };
-    }
-    return { type: "movement", secs: moveSecs };
-  }, [waterSecs, moveSecs, pomoSecs, pomoPhase]);
-
-  const next = getNextReminder();
-  const primaryLabel = nextReminderLabel(next.type, next.secs);
-
-  // Handle pomodoro toggle on click
-  const handlePomoClick = useCallback(async () => {
+  const onInstall = useCallback(async () => {
+    if (!updateAvailable) return;
+    const yes = await ask(
+      `Haysu ${updateAvailable.version} is available. Download and install now? Haysu will restart.`,
+      { title: "Update Haysu", kind: "info", okLabel: "Install", cancelLabel: "Later" }
+    );
+    if (!yes) return;
     try {
-      await api.togglePomodoro();
+      setInstalling(0);
+      await installUpdate((f) => setInstalling(f));
     } catch (e) {
-      console.error("Failed to toggle pomodoro:", e);
+      console.error(errorMessage(e));
+      setInstalling(null);
     }
-  }, []);
+  }, [updateAvailable]);
+
+  if (!live || !config) return null;
+
+  const dnd = live.dnd.enabled;
+  const paused = live.paused_reason;
+  const pomo = live.pomodoro;
+
+  // Primary line.
+  let primary: string;
+  let accent = "text-text-primary dark:text-text-primary-dark";
+  if (pomo.running) {
+    const label =
+      pomo.phase === "work" ? "Focus" : pomo.phase === "long_break" ? "Long break" : "Break";
+    primary = `${pomo.paused ? "⏸" : "🍅"} ${label} ${formatClock(pomo.remaining_secs)}`;
+    accent = "text-tomato";
+  } else if (dnd) {
+    primary = live.dnd.until
+      ? `🔕 DND until ${new Date(live.dnd.until).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`
+      : "🔕 Do Not Disturb";
+    accent = "text-text-secondary dark:text-text-secondary-dark";
+  } else if (paused === "schedule") {
+    primary = "🌙 Outside work hours";
+    accent = "text-text-secondary dark:text-text-secondary-dark";
+  } else if (paused === "idle") {
+    primary = "💤 Paused while away";
+    accent = "text-text-secondary dark:text-text-secondary-dark";
+  } else if (live.water.remaining_secs <= live.movement.remaining_secs) {
+    primary = `💧 Water in ${formatDurationShort(live.water.remaining_secs)}`;
+  } else {
+    primary = `🏃 Move in ${formatDurationShort(live.movement.remaining_secs)}`;
+  }
+
+  const row = "flex items-center justify-between text-xs";
+  const muted = "text-text-secondary dark:text-text-secondary-dark";
+  const iconBtn =
+    "w-7 h-7 inline-flex items-center justify-center rounded-lg text-xs hover:bg-surface-hover dark:hover:bg-surface-hover-dark transition-colors focus:outline-none";
 
   return (
-    <div className="h-screen w-screen bg-transparent flex items-center justify-center">
+    <div className="h-screen w-screen flex items-start justify-center p-1">
       <div
-        className={`
-          bg-white/92 dark:bg-surface-dark/92 backdrop-blur-xl
-          rounded-2xl shadow-lg border border-white/30 dark:border-border-dark/50
-          transition-all duration-300 ease-out select-none
-          ${expanded ? "px-4 py-3" : "px-3 py-2"}
-        `}
+        className={`w-full rounded-2xl border backdrop-blur-xl select-none overflow-hidden transition-colors
+          bg-white/90 dark:bg-surface-dark/90
+          ${dnd ? "border-border/60 dark:border-border-dark/60" : "border-haysu-200/70 dark:border-haysu-500/30"}`}
         style={{
-          boxShadow: dndEnabled
-            ? "0 4px 12px rgba(0,0,0,0.08)"
-            : "0 4px 16px rgba(59,147,247,0.12), 0 2px 8px rgba(0,0,0,0.06)",
+          boxShadow: dnd
+            ? "0 4px 14px rgba(0,0,0,0.10)"
+            : "0 6px 18px rgba(59,147,247,0.16), 0 2px 8px rgba(0,0,0,0.08)",
         }}
-        data-tauri-drag-region
       >
-        {/* Compact view */}
-        <div
-          className="flex items-center gap-2.5 cursor-pointer"
-          onClick={() => setExpanded(!expanded)}
-          data-tauri-drag-region
-        >
-          {/* Logo */}
+        {/* Compact bar */}
+        <div className="h-12 flex items-center gap-1.5 pl-1.5 pr-1.5">
+          <div
+            data-tauri-drag-region
+            className={`h-8 w-4 flex items-center justify-center rounded-md ${muted} text-[10px] tracking-tighter`}
+            title="Drag to move"
+          >
+            ⋮⋮
+          </div>
           <AnimatedH
-            size={24}
-            loading={pomoPhase !== "idle"}
-            color={dndEnabled ? "#9ca3af" : "#3b93f7"}
+            size={22}
+            loading={pomo.running && !pomo.paused}
+            color={dnd ? "#9ca3af" : "#3b93f7"}
           />
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className={`flex-1 text-left text-xs font-semibold truncate ${accent} focus:outline-none`}
+            title={expanded ? "Collapse" : "Expand"}
+          >
+            {primary}
+          </button>
 
-          {/* DND indicator */}
-          {dndEnabled ? (
-            <span className="text-xs font-medium text-text-secondary dark:text-text-secondary-dark">
-              🔕 DND
-            </span>
-          ) : (
-            <>
-              {/* Next reminder label */}
-              <span className="text-xs font-medium text-text-primary dark:text-text-primary-dark whitespace-nowrap">
-                {primaryLabel}
-              </span>
-            </>
+          {updateAvailable && (
+            <button
+              type="button"
+              onClick={onInstall}
+              className="px-1.5 h-6 rounded-md bg-move/15 text-move text-[10px] font-semibold hover:bg-move/25"
+              title={`Update to ${updateAvailable.version}`}
+            >
+              {installing === null ? "⬆ Update" : `${Math.round(installing * 100)}%`}
+            </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => api.pomodoro("toggle")}
+            className={`${iconBtn} ${pomo.running ? "text-tomato" : muted}`}
+            title={
+              pomo.running ? (pomo.paused ? "Resume Pomodoro" : "Pause Pomodoro") : "Start Pomodoro"
+            }
+          >
+            {pomo.running && !pomo.paused ? "⏸" : "▶"}
+          </button>
         </div>
 
-        {/* Expanded view */}
-        {expanded && !dndEnabled && (
-          <div className="mt-2.5 pt-2.5 border-t border-border/50 dark:border-border-dark/50 space-y-1.5 animate-fade-in">
-            {/* Water timer */}
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-text-secondary dark:text-text-secondary-dark">💧 Water</span>
-              <span className="font-mono font-medium text-water">{formatTime(waterSecs)}</span>
-            </div>
-
-            {/* Movement timer */}
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-text-secondary dark:text-text-secondary-dark">🏃 Move</span>
-              <span className="font-mono font-medium text-move">{formatTime(moveSecs)}</span>
-            </div>
-
-            {/* Pomodoro */}
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-text-secondary dark:text-text-secondary-dark">🍅 Pomo</span>
-              {pomoPhase === "idle" ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePomoClick();
-                  }}
-                  className="text-tomato hover:underline font-medium"
-                >
-                  Start
-                </button>
-              ) : (
-                <span className="font-mono font-medium text-tomato">
-                  {formatTime(pomoSecs)}
+        {/* Expanded panel */}
+        {expanded && (
+          <div className="px-3 pb-3 pt-1 space-y-2 border-t border-border/50 dark:border-border-dark/50 animate-fade-in">
+            <div className={row}>
+              <span className={muted}>💧 Water</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono font-medium text-water tabular-nums">
+                  {formatClock(live.water.remaining_secs)}
                 </span>
-              )}
+                <button
+                  type="button"
+                  className="px-1.5 h-5 rounded-md bg-water/15 text-water text-[10px] font-semibold hover:bg-water/25"
+                  onClick={() => api.logWater(true, config.water_amount_ml)}
+                  title={`Log ${config.water_amount_ml} ml`}
+                >
+                  +{config.water_amount_ml}
+                </button>
+              </div>
+            </div>
+            <div className={row}>
+              <span className={muted}>🏃 Move</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono font-medium text-move tabular-nums">
+                  {formatClock(live.movement.remaining_secs)}
+                </span>
+                <button
+                  type="button"
+                  className="px-1.5 h-5 rounded-md bg-move/15 text-move text-[10px] font-semibold hover:bg-move/25"
+                  onClick={() => api.resetReminder("movement")}
+                  title="Restart countdown"
+                >
+                  ↻
+                </button>
+              </div>
+            </div>
+            <div className={row}>
+              <span className={muted}>🍅 Pomodoro</span>
+              <div className="flex items-center gap-1.5">
+                {pomo.running ? (
+                  <>
+                    <span className="font-mono font-medium text-tomato tabular-nums">
+                      {formatClock(pomo.remaining_secs)}
+                    </span>
+                    <button
+                      type="button"
+                      className="px-1.5 h-5 rounded-md bg-tomato/15 text-tomato text-[10px] font-semibold hover:bg-tomato/25"
+                      onClick={() => api.pomodoro("skip")}
+                      title="Skip phase"
+                    >
+                      ⏭
+                    </button>
+                    <button
+                      type="button"
+                      className="px-1.5 h-5 rounded-md bg-tomato/15 text-tomato text-[10px] font-semibold hover:bg-tomato/25"
+                      onClick={() => api.pomodoro("stop")}
+                      title="Stop"
+                    >
+                      ■
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="px-2 h-5 rounded-md bg-tomato/15 text-tomato text-[10px] font-semibold hover:bg-tomato/25"
+                    onClick={() => api.pomodoro("start")}
+                  >
+                    Start {pomo.queued !== "work" ? "break" : "focus"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 pt-1">
+              <button
+                type="button"
+                onClick={() => api.toggleDnd()}
+                className={`flex-1 h-7 rounded-lg text-[11px] font-medium transition-colors ${
+                  dnd
+                    ? "bg-haysu-500 text-white"
+                    : "bg-surface-hover dark:bg-surface-hover-dark text-text-secondary dark:text-text-secondary-dark hover:text-text-primary dark:hover:text-text-primary-dark"
+                }`}
+              >
+                {dnd ? "DND on" : "DND"}
+              </button>
+              <button
+                type="button"
+                onClick={() => api.showWindow("dashboard")}
+                className="flex-1 h-7 rounded-lg text-[11px] font-medium bg-surface-hover dark:bg-surface-hover-dark text-text-secondary dark:text-text-secondary-dark hover:text-text-primary dark:hover:text-text-primary-dark"
+              >
+                Dashboard
+              </button>
+              <button
+                type="button"
+                onClick={() => api.showWindow("settings")}
+                className="flex-1 h-7 rounded-lg text-[11px] font-medium bg-surface-hover dark:bg-surface-hover-dark text-text-secondary dark:text-text-secondary-dark hover:text-text-primary dark:hover:text-text-primary-dark"
+              >
+                Settings
+              </button>
             </div>
           </div>
         )}

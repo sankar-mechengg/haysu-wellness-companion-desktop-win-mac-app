@@ -28,3 +28,9 @@ npm-debug.log*
 # Tauri
 src-tauri/gen/
 WixTools/
+
+# Release
+RELEASE_NOTES.md
+
+# Test coverage
+coverage/

@@ -1,79 +1,98 @@
+//! Database bootstrap and migrations.
+
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use rusqlite::Connection;
-use tauri::AppHandle;
-use tauri::Manager;
 
-/// Managed database state
+use rusqlite::Connection;
+use tauri::{AppHandle, Manager};
+
+/// Managed database state.
 pub struct DbState {
     pub conn: Mutex<Connection>,
 }
 
-/// Get the database file path in the app data directory
-pub fn get_db_path(app: &AppHandle) -> PathBuf {
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .expect("Failed to get app data dir");
-    fs::create_dir_all(&app_dir).expect("Failed to create app data dir");
-    app_dir.join("haysu.db")
-}
-
-/// Initialize the database and run migrations
-pub fn initialize_db(app: &AppHandle) -> DbState {
-    let db_path = get_db_path(app);
-    let conn = Connection::open(&db_path).expect("Failed to open database");
-
-    // Enable WAL mode for better concurrent access
-    conn.execute_batch("PRAGMA journal_mode=WAL;")
-        .expect("Failed to set WAL mode");
-
-    // Run table creation
-    conn.execute_batch(CREATE_TABLES_SQL)
-        .expect("Failed to create tables");
-
-    // Seed default settings if empty
-    seed_default_settings(&conn);
-
-    DbState {
-        conn: Mutex::new(conn),
+impl DbState {
+    /// Open (or create) the database at `path` and run migrations.
+    pub fn open(path: &std::path::Path) -> Result<Self, String> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("cannot create data dir {}: {e}", parent.display()))?;
+        }
+        let conn = Connection::open(path).map_err(|e| format!("cannot open database: {e}"))?;
+        prepare(&conn)?;
+        Ok(Self {
+            conn: Mutex::new(conn),
+        })
     }
-}
 
-fn seed_default_settings(conn: &Connection) {
-    let count: i64 = conn
-        .query_row("SELECT COUNT(*) FROM settings", [], |row| row.get(0))
-        .unwrap_or(0);
-
-    if count == 0 {
-        let defaults = vec![
-            ("water_interval_min", "30"),
-            ("movement_interval_min", "45"),
-            ("pomodoro_work_min", "25"),
-            ("pomodoro_short_break_min", "5"),
-            ("pomodoro_long_break_min", "15"),
-            ("pomodoro_sessions_before_long", "4"),
-            ("sound_enabled", "true"),
-            ("dnd_enabled", "false"),
-            ("theme", "light"),
-            ("widget_always_on_top", "true"),
-            ("widget_visible", "true"),
-            ("autostart_enabled", "false"),
-            ("onboarding_complete", "false"),
-            ("water_amount_ml", "250"),
-        ];
-        for (key, value) in defaults {
-            conn.execute(
-                "INSERT OR IGNORE INTO settings (key, value) VALUES (?1, ?2)",
-                rusqlite::params![key, value],
-            )
-            .ok();
+    /// In-memory database, used by tests.
+    #[cfg(test)]
+    pub fn in_memory() -> Self {
+        let conn = Connection::open_in_memory().expect("in-memory sqlite");
+        prepare(&conn).expect("migrations");
+        Self {
+            conn: Mutex::new(conn),
         }
     }
 }
 
-const CREATE_TABLES_SQL: &str = r#"
+fn prepare(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "PRAGMA journal_mode=WAL;
+         PRAGMA foreign_keys=ON;
+         PRAGMA busy_timeout=5000;",
+    )
+    .map_err(|e| format!("pragma failed: {e}"))?;
+    migrate(conn)
+}
+
+/// Resolve the database path inside the app data directory.
+pub fn db_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("no app data dir: {e}"))?;
+    Ok(dir.join("haysu.db"))
+}
+
+/// Current schema version. Bump when adding a migration.
+pub const SCHEMA_VERSION: i64 = 2;
+
+fn migrate(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS schema_version (
+            version INTEGER NOT NULL
+        );",
+    )
+    .map_err(|e| e.to_string())?;
+
+    let current: i64 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(version), 0) FROM schema_version",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+
+    // Version 0 => brand new or a 1.0.x database that predates versioning.
+    if current < 1 {
+        conn.execute_batch(V1_SQL)
+            .map_err(|e| format!("migration v1: {e}"))?;
+        conn.execute("INSERT INTO schema_version (version) VALUES (1)", [])
+            .map_err(|e| e.to_string())?;
+    }
+    if current < 2 {
+        conn.execute_batch(V2_SQL)
+            .map_err(|e| format!("migration v2: {e}"))?;
+        conn.execute("INSERT INTO schema_version (version) VALUES (2)", [])
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Original 1.0 schema. `IF NOT EXISTS` keeps existing databases intact.
+const V1_SQL: &str = r#"
 CREATE TABLE IF NOT EXISTS user_profile (
     id          INTEGER PRIMARY KEY DEFAULT 1,
     name        TEXT NOT NULL DEFAULT '',
@@ -116,3 +135,58 @@ CREATE TABLE IF NOT EXISTS pomodoro_log (
     completed       INTEGER DEFAULT 0
 );
 "#;
+
+/// 1.1: indexes for date-range queries.
+const V2_SQL: &str = r#"
+CREATE INDEX IF NOT EXISTS idx_water_ts ON water_log(timestamp);
+CREATE INDEX IF NOT EXISTS idx_movement_ts ON movement_log(timestamp);
+CREATE INDEX IF NOT EXISTS idx_pomodoro_started ON pomodoro_log(started_at);
+"#;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fresh_db_is_at_latest_version() {
+        let db = DbState::in_memory();
+        let conn = db.conn.lock().unwrap();
+        let v: i64 = conn
+            .query_row("SELECT MAX(version) FROM schema_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(v, SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn migration_is_idempotent() {
+        let db = DbState::in_memory();
+        let conn = db.conn.lock().unwrap();
+        migrate(&conn).unwrap();
+        migrate(&conn).unwrap();
+        let rows: i64 = conn
+            .query_row("SELECT COUNT(*) FROM schema_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(rows, SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn upgrades_a_1_0_database() {
+        // Simulate a 1.0 database: tables exist but no schema_version table.
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(V1_SQL).unwrap();
+        conn.execute(
+            "INSERT INTO water_log (consumed, amount_ml) VALUES (1, 250)",
+            [],
+        )
+        .unwrap();
+        prepare(&conn).unwrap();
+        let v: i64 = conn
+            .query_row("SELECT MAX(version) FROM schema_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(v, SCHEMA_VERSION);
+        let rows: i64 = conn
+            .query_row("SELECT COUNT(*) FROM water_log", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(rows, 1, "existing data must survive");
+    }
+}

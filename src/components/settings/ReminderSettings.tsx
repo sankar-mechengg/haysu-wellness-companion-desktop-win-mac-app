@@ -1,130 +1,137 @@
-import { useState, useEffect, useCallback } from "react";
-import Button from "../common/Button";
-import Slider from "../common/Slider";
 import Card from "../common/Card";
-import { useSettings } from "../../hooks/useSettings";
-import { api } from "../../lib/tauriApi";
+import Slider from "../common/Slider";
+import Toggle from "../common/Toggle";
+import Segmented from "../common/Segmented";
+import { Rows, SectionHeader } from "../common/Section";
+import { useConfigPatch } from "../../hooks/useConfigPatch";
 import { ADAPTIVE_INTERVALS } from "../../lib/constants";
-import { useAppStore } from "../../store/appStore";
+import { formatMinutes } from "../../lib/format";
+import { useConfig, useProfile } from "../../store/appStore";
+import type { ReminderStyle } from "../../lib/api";
 
 export default function ReminderSettings() {
-  const { settings, loading, updateSetting } = useSettings();
-  const [waterMin, setWaterMin] = useState(30);
-  const [moveMin, setMoveMin] = useState(45);
-  const [waterMl, setWaterMl] = useState(250);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const workStyle = useAppStore((s) => s.workStyle) as keyof typeof ADAPTIVE_INTERVALS;
+  const config = useConfig();
+  const profile = useProfile();
+  const patch = useConfigPatch();
+  if (!config) return null;
 
-  useEffect(() => {
-    if (settings) {
-      setWaterMin(parseInt(settings.water_interval_min) || 30);
-      setMoveMin(parseInt(settings.movement_interval_min) || 45);
-      setWaterMl(parseInt(settings.water_amount_ml) || 250);
-    }
-  }, [settings]);
-
-  const handleSave = useCallback(async () => {
-    setSaving(true);
-    setSaved(false);
-    try {
-      await updateSetting("water_interval_min", String(waterMin));
-      await updateSetting("movement_interval_min", String(moveMin));
-      await updateSetting("water_amount_ml", String(waterMl));
-      await api.setWaterInterval(waterMin);
-      await api.setMovementInterval(moveMin);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (e) {
-      console.error("Failed to save reminder settings:", e);
-    } finally {
-      setSaving(false);
-    }
-  }, [waterMin, moveMin, waterMl, updateSetting]);
-
-  const handleResetAdaptive = useCallback(() => {
-    const adaptive = ADAPTIVE_INTERVALS[workStyle] || ADAPTIVE_INTERVALS.moderate;
-    setWaterMin(adaptive.water);
-    setMoveMin(adaptive.movement);
-  }, [workStyle]);
-
-  if (loading) {
-    return <p className="text-sm text-text-secondary dark:text-text-secondary-dark py-4">Loading...</p>;
-  }
-
-  const hoursPerDay = 8;
-  const waterCount = Math.floor((hoursPerDay * 60) / waterMin);
-  const moveCount = Math.floor((hoursPerDay * 60) / moveMin);
+  const perDay = (min: number) => Math.floor((8 * 60) / min);
+  const adaptive = ADAPTIVE_INTERVALS[profile?.work_style ?? "moderate"];
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">Reminders</h3>
-          <p className="text-xs text-text-secondary dark:text-text-secondary-dark mt-0.5">
-            Adjust how often Haysu reminds you
-          </p>
-        </div>
-        <button
-          onClick={handleResetAdaptive}
-          className="text-xs text-haysu-500 hover:text-haysu-600 font-medium"
-        >
-          Reset to adaptive
-        </button>
-      </div>
+    <div className="space-y-4">
+      <SectionHeader
+        title="Reminders"
+        description="How often Haysu nudges you, and how the nudge looks."
+        action={
+          <button
+            type="button"
+            onClick={() =>
+              patch(
+                { water_interval_min: adaptive.water, movement_interval_min: adaptive.movement },
+                "Intervals reset for your work style"
+              )
+            }
+            className="text-xs text-haysu-500 hover:text-haysu-600 font-medium"
+          >
+            Reset to adaptive
+          </button>
+        }
+      />
 
-      <Card variant="water" padding="md">
-        <div className="flex items-center gap-2 mb-3">
-          <span>💧</span>
-          <h4 className="text-sm font-medium text-text-primary dark:text-text-primary-dark">Water Reminders</h4>
-        </div>
+      <Card variant="water" padding="md" className="space-y-3">
+        <h4 className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+          💧 Water
+        </h4>
         <Slider
-          value={waterMin}
-          onChange={setWaterMin}
-          min={10}
-          max={90}
-          step={5}
           label="Interval"
-          unit=" min"
-        />
-        <p className="text-xs text-text-secondary dark:text-text-secondary-dark mt-2">
-          ≈ {waterCount} reminders per 8-hour day
-        </p>
-        <div className="mt-3">
-          <Slider
-            value={waterMl}
-            onChange={setWaterMl}
-            min={100}
-            max={500}
-            step={50}
-            label="Amount per reminder"
-            unit=" ml"
-          />
-        </div>
-      </Card>
-
-      <Card variant="move" padding="md">
-        <div className="flex items-center gap-2 mb-3">
-          <span>🏃</span>
-          <h4 className="text-sm font-medium text-text-primary dark:text-text-primary-dark">Movement Reminders</h4>
-        </div>
-        <Slider
-          value={moveMin}
-          onChange={setMoveMin}
-          min={15}
+          value={config.water_interval_min}
+          onChangeEnd={(v) => patch({ water_interval_min: v })}
+          min={10}
           max={120}
           step={5}
-          label="Interval"
-          unit=" min"
+          format={formatMinutes}
         />
-        <p className="text-xs text-text-secondary dark:text-text-secondary-dark mt-2">
-          ≈ {moveCount} reminders per 8-hour day
+        <p className="text-[11px] text-text-secondary dark:text-text-secondary-dark -mt-1">
+          ≈ {perDay(config.water_interval_min)} reminders in an 8-hour day
+        </p>
+        <Slider
+          label="Default amount per reminder"
+          value={config.water_amount_ml}
+          onChangeEnd={(v) => patch({ water_amount_ml: v })}
+          min={100}
+          max={750}
+          step={50}
+          unit=" ml"
+        />
+      </Card>
+
+      <Card variant="move" padding="md" className="space-y-3">
+        <h4 className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+          🏃 Movement
+        </h4>
+        <Slider
+          label="Interval"
+          value={config.movement_interval_min}
+          onChangeEnd={(v) => patch({ movement_interval_min: v })}
+          min={15}
+          max={180}
+          step={5}
+          format={formatMinutes}
+        />
+        <p className="text-[11px] text-text-secondary dark:text-text-secondary-dark -mt-1">
+          ≈ {perDay(config.movement_interval_min)} breaks in an 8-hour day · exercises match your{" "}
+          <span className="font-medium">{profile?.work_style ?? "moderate"}</span> profile
         </p>
       </Card>
 
-      <Button variant="primary" size="md" fullWidth onClick={handleSave} disabled={saving}>
-        {saving ? "Saving..." : saved ? "✓ Applied!" : "Save & Apply"}
-      </Button>
+      <Card padding="md">
+        <Rows>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                Reminder style
+              </p>
+              <p className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                Popup lets you log and snooze. Native uses the OS notification centre.
+              </p>
+            </div>
+            <Segmented<ReminderStyle>
+              size="sm"
+              value={config.reminder_style}
+              onChange={(v) => patch({ reminder_style: v })}
+              options={[
+                { value: "popup", label: "Popup" },
+                { value: "native", label: "Native" },
+                { value: "both", label: "Both" },
+              ]}
+            />
+          </div>
+          <Toggle
+            label="Notification sound"
+            description="A soft chime when a popup appears"
+            checked={config.sound_enabled}
+            onChange={(v) => patch({ sound_enabled: v })}
+          />
+          <Slider
+            label="Snooze length"
+            value={config.snooze_minutes}
+            onChangeEnd={(v) => patch({ snooze_minutes: v })}
+            min={1}
+            max={30}
+            format={formatMinutes}
+          />
+          <Slider
+            label="Auto-dismiss popup after"
+            value={config.popup_auto_dismiss_sec}
+            onChangeEnd={(v) => patch({ popup_auto_dismiss_sec: v })}
+            min={0}
+            max={300}
+            step={15}
+            format={(v) => (v === 0 ? "Never" : `${v}s`)}
+          />
+        </Rows>
+      </Card>
     </div>
   );
 }

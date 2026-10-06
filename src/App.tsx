@@ -1,11 +1,30 @@
-import { Component, useEffect, useState, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
-import { useTheme } from "./hooks/useTheme";
+import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from "react";
+import { useBootstrap } from "./hooks/useBootstrap";
+import { useAppStore } from "./store/appStore";
+import AnimatedH from "./components/common/AnimatedH";
 
-const PopupWindow = lazy(() => import("./windows/PopupWindow"));
 const WidgetWindow = lazy(() => import("./windows/WidgetWindow"));
+const PopupWindow = lazy(() => import("./windows/PopupWindow"));
 const DashboardWindow = lazy(() => import("./windows/DashboardWindow"));
-const OnboardingWindow = lazy(() => import("./windows/OnboardingWindow"));
 const SettingsWindow = lazy(() => import("./windows/SettingsWindow"));
+const OnboardingWindow = lazy(() => import("./windows/OnboardingWindow"));
+
+export type WindowKind = "widget" | "popup" | "dashboard" | "settings" | "onboarding";
+
+/** Which window this webview is, taken from the URL once at startup. */
+export const WINDOW: WindowKind = (() => {
+  const w = new URLSearchParams(window.location.search).get("window");
+  return (["widget", "popup", "dashboard", "settings", "onboarding"] as const).includes(
+    w as WindowKind
+  )
+    ? (w as WindowKind)
+    : "dashboard";
+})();
+
+const TRANSPARENT_WINDOWS: WindowKind[] = ["widget", "popup"];
+if (TRANSPARENT_WINDOWS.includes(WINDOW)) {
+  document.documentElement.classList.add("transparent");
+}
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state = { error: null as string | null };
@@ -13,16 +32,23 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: string |
     return { error: error.message };
   }
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[Haysu] React error:", error, info);
+    console.error("[Haysu] render error:", error, info);
   }
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: 24, fontFamily: "sans-serif" }}>
-          <h2 style={{ color: "#e53e3e" }}>Something went wrong</h2>
-          <pre style={{ whiteSpace: "pre-wrap", fontSize: 13, color: "#666" }}>
+        <div className="h-screen w-screen flex flex-col items-center justify-center gap-3 p-6 text-center">
+          <AnimatedH size={40} />
+          <h2 className="text-base font-semibold text-tomato">Something went wrong</h2>
+          <pre className="text-xs text-text-secondary dark:text-text-secondary-dark whitespace-pre-wrap max-w-md">
             {this.state.error}
           </pre>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-2 px-4 py-2 rounded-xl bg-haysu-500 text-white text-sm"
+          >
+            Reload
+          </button>
         </div>
       );
     }
@@ -30,61 +56,40 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: string |
   }
 }
 
-function WindowRouter() {
-  const [windowType, setWindowType] = useState<string>("main");
-  const { theme, initTheme } = useTheme();
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const win = params.get("window") || "main";
-    console.log("[Haysu] Window type:", win);
-    setWindowType(win);
-    initTheme();
-    if (["popup", "widget"].includes(win)) {
-      document.body.classList.add("transparent");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (theme === "dark") {
-      document.body.classList.add("dark");
-    } else {
-      document.body.classList.remove("dark");
-    }
-  }, [theme]);
-
-  const fallback = (
-    <div className="h-screen w-screen flex items-center justify-center bg-bg dark:bg-bg-dark">
-      <p className="text-sm text-text-secondary">Loading...</p>
+function Loading() {
+  if (TRANSPARENT_WINDOWS.includes(WINDOW)) return null;
+  return (
+    <div className="h-screen w-screen flex items-center justify-center">
+      <AnimatedH size={36} loading />
     </div>
   );
+}
 
-  switch (windowType) {
-    case "popup":
-      return <Suspense fallback={fallback}><PopupWindow /></Suspense>;
+function Router() {
+  useBootstrap();
+  const ready = useAppStore((s) => s.ready);
+  if (!ready) return <Loading />;
+
+  switch (WINDOW) {
     case "widget":
-      return <Suspense fallback={fallback}><WidgetWindow /></Suspense>;
-    case "dashboard":
-      return <Suspense fallback={fallback}><DashboardWindow /></Suspense>;
-    case "onboarding":
-      return <Suspense fallback={fallback}><OnboardingWindow /></Suspense>;
+      return <WidgetWindow />;
+    case "popup":
+      return <PopupWindow />;
     case "settings":
-      return <Suspense fallback={fallback}><SettingsWindow /></Suspense>;
+      return <SettingsWindow />;
+    case "onboarding":
+      return <OnboardingWindow />;
     default:
-      return <MainBackground />;
+      return <DashboardWindow />;
   }
 }
 
-function MainBackground() {
-  return null;
-}
-
-function App() {
+export default function App() {
   return (
     <ErrorBoundary>
-      <WindowRouter />
+      <Suspense fallback={<Loading />}>
+        <Router />
+      </Suspense>
     </ErrorBoundary>
   );
 }
-
-export default App;

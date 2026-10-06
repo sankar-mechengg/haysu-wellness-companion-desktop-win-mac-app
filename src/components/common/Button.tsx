@@ -12,20 +12,15 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<Variant, string> = {
-  primary:
-    "bg-haysu-500 text-white hover:bg-haysu-600 active:bg-haysu-600 shadow-sm",
+  primary: "bg-haysu-500 text-white hover:bg-haysu-600 active:bg-haysu-600 shadow-sm",
   secondary:
     "bg-surface text-text-primary border border-border hover:bg-surface-hover dark:bg-surface-dark dark:text-text-primary-dark dark:border-border-dark dark:hover:bg-surface-hover-dark",
   ghost:
     "bg-transparent text-text-secondary hover:bg-surface-hover dark:text-text-secondary-dark dark:hover:bg-surface-hover-dark",
-  danger:
-    "bg-red-500 text-white hover:bg-red-600 active:bg-red-700",
-  water:
-    "bg-water text-white hover:opacity-90 active:opacity-80",
-  move:
-    "bg-move text-white hover:opacity-90 active:opacity-80",
-  tomato:
-    "bg-tomato text-white hover:opacity-90 active:opacity-80",
+  danger: "bg-red-500 text-white hover:bg-red-600 active:bg-red-700",
+  water: "bg-water text-white hover:opacity-90 active:opacity-80",
+  move: "bg-move text-white hover:opacity-90 active:opacity-80",
+  tomato: "bg-tomato text-white hover:opacity-90 active:opacity-80",
 };
 
 const sizeClasses: Record<Size, string> = {

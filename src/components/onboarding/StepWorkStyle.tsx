@@ -1,18 +1,9 @@
 import Button from "../common/Button";
 import Card from "../common/Card";
-import { OnboardingData } from "./OnboardingWizard";
-import { WORK_STYLES, ADAPTIVE_INTERVALS } from "../../lib/constants";
+import type { StepProps } from "./OnboardingWizard";
+import { ADAPTIVE_INTERVALS, WORK_STYLES } from "../../lib/constants";
 
-interface Props {
-  data: OnboardingData;
-  updateData: (partial: Partial<OnboardingData>) => void;
-  onNext: () => void;
-  onBack: () => void;
-}
-
-export default function StepWorkStyle({ data, updateData, onNext, onBack }: Props) {
-  const selectedAdaptive = ADAPTIVE_INTERVALS[data.work_style];
-
+export default function StepWorkStyle({ data, update, next, back }: StepProps) {
   return (
     <div className="animate-fade-in space-y-5">
       <div>
@@ -20,28 +11,22 @@ export default function StepWorkStyle({ data, updateData, onNext, onBack }: Prop
           What's your work style?
         </h2>
         <p className="text-xs text-text-secondary dark:text-text-secondary-dark mt-1">
-          Haysu adjusts exercise intensity and reminder frequency based on this.
+          Sets your reminder rhythm and keeps standing or vigorous exercises out of a desk-bound
+          day.
         </p>
       </div>
 
-      {/* Work style cards */}
       <div className="space-y-3">
         {WORK_STYLES.map((style) => {
-          const isSelected = data.work_style === style.id;
-          const adaptive = ADAPTIVE_INTERVALS[style.id];
+          const selected = data.work_style === style.id;
+          const a = ADAPTIVE_INTERVALS[style.id];
           return (
             <Card
               key={style.id}
               hoverable
               padding="md"
-              className={`
-                cursor-pointer transition-all
-                ${isSelected
-                  ? "ring-2 ring-haysu-500 border-haysu-300 dark:border-haysu-500"
-                  : ""
-                }
-              `}
-              onClick={() => updateData({ work_style: style.id as OnboardingData["work_style"] })}
+              className={`cursor-pointer ${selected ? "ring-2 ring-haysu-500 border-haysu-300 dark:border-haysu-500" : ""}`}
+              onClick={() => update({ work_style: style.id })}
             >
               <div className="flex items-start gap-3">
                 <span className="text-2xl mt-0.5">{style.emoji}</span>
@@ -50,8 +35,8 @@ export default function StepWorkStyle({ data, updateData, onNext, onBack }: Prop
                     <h3 className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
                       {style.label}
                     </h3>
-                    {isSelected && (
-                      <span className="text-xs bg-haysu-100 dark:bg-haysu-500/20 text-haysu-600 dark:text-haysu-300 px-2 py-0.5 rounded-full font-medium">
+                    {selected && (
+                      <span className="text-[10px] bg-haysu-100 dark:bg-haysu-500/20 text-haysu-600 dark:text-haysu-300 px-2 py-0.5 rounded-full font-medium">
                         Selected
                       </span>
                     )}
@@ -59,13 +44,9 @@ export default function StepWorkStyle({ data, updateData, onNext, onBack }: Prop
                   <p className="text-xs text-text-secondary dark:text-text-secondary-dark mt-0.5">
                     {style.description}
                   </p>
-                  <div className="flex gap-4 mt-2">
-                    <span className="text-xs text-water font-medium">
-                      💧 Every {adaptive.water}min
-                    </span>
-                    <span className="text-xs text-move font-medium">
-                      🏃 Every {adaptive.movement}min
-                    </span>
+                  <div className="flex gap-4 mt-2 text-xs font-medium">
+                    <span className="text-water">💧 every {a.water} min</span>
+                    <span className="text-move">🏃 every {a.movement} min</span>
                   </div>
                 </div>
               </div>
@@ -74,12 +55,11 @@ export default function StepWorkStyle({ data, updateData, onNext, onBack }: Prop
         })}
       </div>
 
-      {/* Navigation */}
       <div className="flex gap-3 pt-1">
-        <Button variant="ghost" size="md" onClick={onBack}>
+        <Button variant="ghost" onClick={back}>
           ← Back
         </Button>
-        <Button variant="primary" size="md" fullWidth onClick={onNext}>
+        <Button variant="primary" fullWidth onClick={next}>
           Continue →
         </Button>
       </div>

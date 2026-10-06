@@ -1,115 +1,134 @@
-import { useState, useEffect, useCallback } from "react";
-import Toggle from "../common/Toggle";
+import { useState } from "react";
+import { ask } from "@tauri-apps/plugin-dialog";
 import Card from "../common/Card";
-import AnimatedH from "../common/AnimatedH";
-import { useSettings } from "../../hooks/useSettings";
-import { useAppStore } from "../../store/appStore";
-import { api } from "../../lib/tauriApi";
+import Toggle from "../common/Toggle";
+import Button from "../common/Button";
+import { Rows, SectionHeader } from "../common/Section";
+import { toast } from "../common/Toast";
+import { useConfigPatch } from "../../hooks/useConfigPatch";
+import { api, errorMessage } from "../../lib/api";
+import { useConfig, useLive } from "../../store/appStore";
+
+const DND_OPTIONS = [
+  { label: "30 min", minutes: 30 },
+  { label: "1 hour", minutes: 60 },
+  { label: "2 hours", minutes: 120 },
+  { label: "Rest of day", minutes: 0 },
+];
 
 export default function GeneralSettings() {
-  const { settings, updateSetting } = useSettings();
-  const soundEnabled = useAppStore((s) => s.soundEnabled);
-  const setSoundEnabled = useAppStore((s) => s.setSoundEnabled);
-  const dndEnabled = useAppStore((s) => s.dndEnabled);
-  const setDnd = useAppStore((s) => s.setDnd);
-  const [autostartEnabled, setAutostartEnabled] = useState(false);
-  const [loadingAutostart, setLoadingAutostart] = useState(true);
+  const config = useConfig();
+  const live = useLive();
+  const patch = useConfigPatch();
+  const [resetting, setResetting] = useState(false);
+  if (!config) return null;
 
-  useEffect(() => {
-    api.isAutostartEnabled()
-      .then((enabled) => {
-        setAutostartEnabled(enabled);
-        setLoadingAutostart(false);
-      })
-      .catch(() => setLoadingAutostart(false));
-  }, []);
+  const dndUntil = live?.dnd.until ? new Date(live.dnd.until) : null;
 
-  const handleAutostart = useCallback(async (checked: boolean) => {
-    setAutostartEnabled(checked);
+  const startDnd = async (minutes: number) => {
+    let m = minutes;
+    if (m === 0) {
+      const now = new Date();
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+      m = Math.max(1, Math.round((end.getTime() - now.getTime()) / 60000));
+    }
+    await api.setDnd(true, m);
+  };
+
+  const reset = async (scope: "logs" | "all") => {
+    const ok = await ask(
+      scope === "logs"
+        ? "Delete all water, movement and Pomodoro history? Your profile and settings stay."
+        : "Delete everything, including your profile and settings, and start the setup again?",
+      { title: "Reset Haysu", kind: "warning", okLabel: "Delete", cancelLabel: "Cancel" }
+    );
+    if (!ok) return;
+    setResetting(true);
     try {
-      if (checked) {
-        await api.enableAutostart();
-      } else {
-        await api.disableAutostart();
-      }
-      await updateSetting("autostart_enabled", String(checked));
+      await api.resetData(scope);
+      toast.success(scope === "logs" ? "History cleared" : "Haysu has been reset");
     } catch (e) {
-      console.error("Failed to toggle autostart:", e);
-      setAutostartEnabled(!checked);
+      toast.error(errorMessage(e));
+    } finally {
+      setResetting(false);
     }
-  }, [updateSetting]);
-
-  const handleSound = useCallback(async (checked: boolean) => {
-    setSoundEnabled(checked);
-    await updateSetting("sound_enabled", String(checked));
-  }, [setSoundEnabled, updateSetting]);
-
-  const handleDnd = useCallback(async (checked: boolean) => {
-    setDnd(checked);
-    await updateSetting("dnd_enabled", String(checked));
-    // Pause/resume timers based on DND
-    if (checked) {
-      await api.pauseWaterTimer().catch(() => {});
-      await api.pauseMovementTimer().catch(() => {});
-    } else {
-      await api.resumeWaterTimer().catch(() => {});
-      await api.resumeMovementTimer().catch(() => {});
-    }
-  }, [setDnd, updateSetting]);
+  };
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <div>
-        <h3 className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">General</h3>
-        <p className="text-xs text-text-secondary dark:text-text-secondary-dark mt-0.5">
-          App behavior and system settings
-        </p>
-      </div>
+    <div className="space-y-4">
+      <SectionHeader
+        title="General"
+        description="System integration, Do Not Disturb and your data."
+      />
 
-      <Card padding="md" className="space-y-4">
-        <Toggle
-          checked={autostartEnabled}
-          onChange={handleAutostart}
-          label="Launch on startup"
-          description="Start Haysu automatically when you log in"
-          disabled={loadingAutostart}
-        />
-        <Toggle
-          checked={soundEnabled}
-          onChange={handleSound}
-          label="Notification sound"
-          description="Play a subtle chime when reminders appear"
-        />
-        <Toggle
-          checked={dndEnabled}
-          onChange={handleDnd}
-          label="Do Not Disturb"
-          description="Temporarily pause all reminders"
-        />
+      <Card padding="md">
+        <Rows>
+          <Toggle
+            label="Launch at login"
+            description="Start Haysu in the background when you sign in"
+            checked={config.autostart_enabled}
+            onChange={(v) => patch({ autostart_enabled: v })}
+          />
+          <Toggle
+            label="Check for updates on launch"
+            description="Looks at GitHub releases shortly after start. Nothing installs without asking."
+            checked={config.check_updates_on_launch}
+            onChange={(v) => patch({ check_updates_on_launch: v })}
+          />
+        </Rows>
       </Card>
 
-      {/* DND warning */}
-      {dndEnabled && (
-        <Card variant="tomato" padding="sm">
-          <p className="text-xs text-center text-tomato font-medium">
-            🔕 DND is active — all reminders are paused
-          </p>
-        </Card>
-      )}
+      <Card padding="md" variant={config.dnd_enabled ? "tomato" : "default"}>
+        <Rows>
+          <Toggle
+            label="Do Not Disturb"
+            description={
+              config.dnd_enabled
+                ? dndUntil
+                  ? `On until ${dndUntil.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`
+                  : "On until you switch it off"
+                : "Pause water and movement reminders"
+            }
+            checked={config.dnd_enabled}
+            onChange={(v) => api.setDnd(v)}
+          />
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-text-secondary dark:text-text-secondary-dark mr-1">
+              Quick DND
+            </span>
+            {DND_OPTIONS.map((o) => (
+              <button
+                key={o.label}
+                type="button"
+                onClick={() => startDnd(o.minutes)}
+                className="h-7 px-2.5 rounded-lg text-xs font-medium bg-surface-hover dark:bg-surface-hover-dark text-text-secondary dark:text-text-secondary-dark hover:text-text-primary dark:hover:text-text-primary-dark"
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </Rows>
+      </Card>
 
-      {/* App info */}
-      <Card padding="md" className="text-center">
-        <AnimatedH size={32} className="mx-auto mb-2" />
-        <h4 className="text-sm font-bold text-text-primary dark:text-text-primary-dark">Haysu</h4>
-        <p className="text-xs text-text-secondary dark:text-text-secondary-dark mt-0.5">
-          Version 1.0.0
+      <Card padding="md">
+        <h4 className="text-sm font-semibold text-text-primary dark:text-text-primary-dark mb-1">
+          Your data
+        </h4>
+        <p className="text-xs text-text-secondary dark:text-text-secondary-dark mb-3">
+          Everything stays on this computer in a local SQLite file. Export it from the dashboard any
+          time.
         </p>
-        <p className="text-xs text-text-secondary dark:text-text-secondary-dark mt-1">
-          Your desktop wellness companion
-        </p>
-        <p className="text-[10px] text-text-secondary/50 dark:text-text-secondary-dark/50 mt-3">
-          Built with Tauri + React + Rust
-        </p>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="secondary" size="sm" onClick={() => api.showWindow("dashboard")}>
+            Open dashboard to export
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => reset("logs")} disabled={resetting}>
+            Clear history
+          </Button>
+          <Button variant="danger" size="sm" onClick={() => reset("all")} disabled={resetting}>
+            Reset everything
+          </Button>
+        </div>
       </Card>
     </div>
   );

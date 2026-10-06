@@ -33,13 +33,7 @@ export default function AnimatedH({
         }}
       >
         {/* Background circle */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={size / 2 - 1}
-          fill={color}
-          opacity={0.1}
-        />
+        <circle cx={size / 2} cy={size / 2} r={size / 2 - 1} fill={color} opacity={0.1} />
 
         {/* H lettermark rotated 45 degrees */}
         <g transform={`rotate(-45 ${size / 2} ${size / 2})`}>

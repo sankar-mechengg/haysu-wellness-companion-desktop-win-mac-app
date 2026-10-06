@@ -1,75 +1,31 @@
 import { useEffect, useRef } from "react";
-import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 /**
- * Hook to listen for Tauri events from the Rust backend.
- * Automatically cleans up the listener on unmount.
- *
- * @param eventName - The event name to listen for
- * @param handler - Callback when event is received
+ * Subscribe to a Tauri event for the lifetime of the component.
+ * Safe under StrictMode: if the component unmounts before `listen` resolves,
+ * the listener is released as soon as it is created.
  */
-export function useTauriEvent<T = unknown>(
-  eventName: string,
-  handler: (payload: T) => void
-) {
+export function useTauriEvent<T = unknown>(eventName: string, handler: (payload: T) => void) {
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
 
   useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-    let mounted = true;
+    let active = true;
+    let unlisten: UnlistenFn | null = null;
 
-    const setup = async () => {
-      try {
-        unlisten = await listen<T>(eventName, (event) => {
-          if (mounted) {
-            handlerRef.current(event.payload);
-          }
-        });
-      } catch (e) {
-        console.error(`Failed to listen for event "${eventName}":`, e);
-      }
-    };
-
-    setup();
+    listen<T>(eventName, (event) => {
+      if (active) handlerRef.current(event.payload);
+    })
+      .then((fn) => {
+        if (active) unlisten = fn;
+        else fn();
+      })
+      .catch((e) => console.error(`[Haysu] listen(${eventName}) failed:`, e));
 
     return () => {
-      mounted = false;
-      if (unlisten) unlisten();
+      active = false;
+      unlisten?.();
     };
   }, [eventName]);
-}
-
-/**
- * Listen to multiple events at once.
- *
- * @param events - Map of event names to handlers
- */
-export function useTauriEvents(
-  events: Record<string, (payload: unknown) => void>
-) {
-  useEffect(() => {
-    const unlisteners: UnlistenFn[] = [];
-    let mounted = true;
-
-    const setup = async () => {
-      for (const [name, handler] of Object.entries(events)) {
-        try {
-          const unlisten = await listen(name, (event) => {
-            if (mounted) handler(event.payload);
-          });
-          unlisteners.push(unlisten);
-        } catch (e) {
-          console.error(`Failed to listen for event "${name}":`, e);
-        }
-      }
-    };
-
-    setup();
-
-    return () => {
-      mounted = false;
-      unlisteners.forEach((fn) => fn());
-    };
-  }, []);
 }

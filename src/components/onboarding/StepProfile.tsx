@@ -1,20 +1,10 @@
-import { useMemo } from "react";
 import Button from "../common/Button";
 import Slider from "../common/Slider";
-import { OnboardingData } from "./OnboardingWizard";
-import { calculateDailyWater, formatWaterMl } from "../../lib/waterCalc";
+import type { StepProps } from "./OnboardingWizard";
+import { calculateDailyWater, formatWaterMl } from "../../lib/format";
 import { OCCUPATIONS } from "../../lib/constants";
 
-interface Props {
-  data: OnboardingData;
-  updateData: (partial: Partial<OnboardingData>) => void;
-  onNext: () => void;
-  onBack: () => void;
-}
-
-export default function StepProfile({ data, updateData, onNext, onBack }: Props) {
-  const waterGoal = useMemo(() => calculateDailyWater(data.weight_kg), [data.weight_kg]);
-
+export default function StepProfile({ data, update, next, back }: StepProps) {
   return (
     <div className="animate-fade-in space-y-5">
       <div>
@@ -22,76 +12,74 @@ export default function StepProfile({ data, updateData, onNext, onBack }: Props)
           Tell us about yourself
         </h2>
         <p className="text-xs text-text-secondary dark:text-text-secondary-dark mt-1">
-          This helps Haysu personalize your reminders and calculate your water goal.
+          Used only on this computer, to size your water goal and pick suitable exercises.
         </p>
       </div>
 
-      {/* Age */}
       <Slider
         label="Age"
         value={data.age}
-        onChange={(v) => updateData({ age: v })}
-        min={16}
-        max={80}
+        onChange={(v) => update({ age: v })}
+        min={13}
+        max={100}
         unit=" yrs"
       />
-
-      {/* Weight */}
       <div>
         <Slider
           label="Weight"
           value={data.weight_kg}
-          onChange={(v) => updateData({ weight_kg: v })}
+          onChange={(v) => update({ weight_kg: v })}
           min={30}
-          max={150}
+          max={200}
           unit=" kg"
         />
         <p className="text-xs text-water mt-1">
-          💧 Daily water goal: <span className="font-semibold">{formatWaterMl(waterGoal)}</span>
-          <span className="text-text-secondary dark:text-text-secondary-dark"> ({data.weight_kg} × 35ml/kg)</span>
+          💧 Daily water goal:{" "}
+          <span className="font-semibold">
+            {formatWaterMl(calculateDailyWater(data.weight_kg))}
+          </span>
+          <span className="text-text-secondary dark:text-text-secondary-dark">
+            {" "}
+            ({data.weight_kg} kg × 35 ml)
+          </span>
         </p>
       </div>
-
-      {/* Height */}
       <Slider
         label="Height"
         value={data.height_cm}
-        onChange={(v) => updateData({ height_cm: v })}
+        onChange={(v) => update({ height_cm: v })}
         min={120}
-        max={220}
+        max={230}
         unit=" cm"
       />
 
-      {/* Occupation */}
       <div>
         <label className="block text-sm font-medium text-text-primary dark:text-text-primary-dark mb-2">
           Occupation
         </label>
         <div className="flex flex-wrap gap-2">
-          {OCCUPATIONS.map((occ) => (
+          {OCCUPATIONS.map((o) => (
             <button
-              key={occ}
-              onClick={() => updateData({ occupation: occ })}
-              className={`
-                px-3 py-1.5 rounded-lg text-xs font-medium transition-all
-                ${data.occupation === occ
+              key={o}
+              type="button"
+              onClick={() => update({ occupation: o })}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                data.occupation === o
                   ? "bg-haysu-500 text-white shadow-sm"
                   : "bg-surface dark:bg-surface-dark text-text-secondary dark:text-text-secondary-dark border border-border dark:border-border-dark hover:border-haysu-300"
-                }
-              `}
+              }`}
             >
-              {occ}
+              {o}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Navigation */}
       <div className="flex gap-3 pt-2">
-        <Button variant="ghost" size="md" onClick={onBack}>
+        <Button variant="ghost" onClick={back}>
           ← Back
         </Button>
-        <Button variant="primary" size="md" fullWidth onClick={onNext}>
+        <Button variant="primary" fullWidth onClick={next}>
           Continue →
         </Button>
       </div>

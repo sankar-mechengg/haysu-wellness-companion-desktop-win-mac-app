@@ -1,9 +1,12 @@
 [package]
 name = "haysu"
-version = "1.0.0"
+version = "1.1.0"
 description = "Haysu — Your desktop wellness companion"
 authors = ["Sankar"]
+license = "MIT"
+repository = "https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app"
 edition = "2021"
+rust-version = "1.77"
 
 [lib]
 name = "haysu_lib"
@@ -13,21 +16,24 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
-tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-dialog = "2"
-tauri-plugin-store = "2"
-tauri-plugin-os = "2"
 tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-log = "2"
+log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = { version = "0.4", features = ["serde"] }
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 rand = "0.8"
 rusqlite = { version = "0.31", features = ["bundled"] }
+user-idle = { version = "0.6", default-features = false, features = ["x11"] }
 
 [profile.release]
 panic = "abort"
@@ -35,3 +41,6 @@ codegen-units = 1
 lto = true
 opt-level = "s"
 strip = true
+
+[profile.dev]
+incremental = true

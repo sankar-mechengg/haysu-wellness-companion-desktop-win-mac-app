@@ -1,80 +1,70 @@
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import {
+  Area,
+  AreaChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import Card from "../common/Card";
-import { DailyStats } from "../../lib/tauriApi";
-import { formatWaterMl } from "../../lib/waterCalc";
+import type { DailyStats } from "../../lib/api";
+import { formatWaterMl, parseLocalDate, weekdayShort } from "../../lib/format";
+import { useChartTheme } from "./chartTheme";
 
-interface WaterChartProps {
-  data: DailyStats[];
-  goalMl?: number;
-}
-
-export default function WaterChart({ data, goalMl = 2450 }: WaterChartProps) {
-  const chartData = data.map((d) => ({
-    day: new Date(d.date).toLocaleDateString("en", { weekday: "short" }),
+export default function WaterChart({ data, goalMl }: { data: DailyStats[]; goalMl: number }) {
+  const t = useChartTheme();
+  const rows = data.map((d) => ({
+    day: weekdayShort(parseLocalDate(d.date)),
     consumed: d.water_total_ml,
-    goal: goalMl,
     glasses: d.water_consumed,
-    skipped: d.water_skipped,
   }));
+  const max = Math.max(goalMl, ...rows.map((r) => r.consumed)) * 1.1;
 
   return (
     <Card padding="md">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
-            💧 Water Intake
-          </h3>
-          <p className="text-xs text-text-secondary dark:text-text-secondary-dark mt-0.5">
-            Goal: {formatWaterMl(goalMl)}/day
-          </p>
-        </div>
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">
+          💧 Water intake
+        </h3>
+        <p className="text-xs text-text-secondary dark:text-text-secondary-dark">
+          Dashed line is your daily goal ({formatWaterMl(goalMl)})
+        </p>
       </div>
-
-      <div className="h-48">
+      <div className="h-44">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+          <AreaChart data={rows} margin={{ top: 6, right: 6, left: -18, bottom: 0 }}>
             <defs>
               <linearGradient id="waterGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#60b8ff" stopOpacity={0.3} />
+                <stop offset="5%" stopColor="#60b8ff" stopOpacity={0.35} />
                 <stop offset="95%" stopColor="#60b8ff" stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <XAxis
-              dataKey="day"
-              tick={{ fontSize: 11, fill: "#9ca3af" }}
-              axisLine={false}
-              tickLine={false}
-            />
+            <XAxis dataKey="day" tick={t.tick} axisLine={false} tickLine={false} />
             <YAxis
-              tick={{ fontSize: 10, fill: "#9ca3af" }}
+              tick={t.tick}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(v) => `${(v / 1000).toFixed(1)}L`}
+              domain={[0, Math.ceil(max / 500) * 500]}
+              tickFormatter={(v: number) => `${(v / 1000).toFixed(1)}L`}
             />
             <Tooltip
-              contentStyle={{
-                background: "rgba(255,255,255,0.95)",
-                border: "1px solid #e5e7eb",
-                borderRadius: "12px",
-                fontSize: "12px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-              }}
-              formatter={(value: number) => [formatWaterMl(value), "Consumed"]}
+              contentStyle={t.tooltipStyle}
+              cursor={{ stroke: t.muted }}
+              formatter={(value: number, _n, p) => [
+                `${formatWaterMl(value)} (${(p.payload as { glasses: number }).glasses} logged)`,
+                "Consumed",
+              ]}
             />
-            <ReferenceLine
-              y={goalMl}
-              stroke="#60b8ff"
-              strokeDasharray="4 4"
-              strokeOpacity={0.5}
-            />
+            <ReferenceLine y={goalMl} stroke="#60b8ff" strokeDasharray="4 4" strokeOpacity={0.6} />
             <Area
               type="monotone"
               dataKey="consumed"
               stroke="#60b8ff"
               strokeWidth={2.5}
               fill="url(#waterGradient)"
-              dot={{ r: 4, fill: "#60b8ff", strokeWidth: 2, stroke: "#fff" }}
-              activeDot={{ r: 6 }}
+              dot={{ r: 3.5, fill: "#60b8ff", strokeWidth: 2, stroke: t.dark ? "#22233c" : "#fff" }}
+              activeDot={{ r: 5 }}
             />
           </AreaChart>
         </ResponsiveContainer>

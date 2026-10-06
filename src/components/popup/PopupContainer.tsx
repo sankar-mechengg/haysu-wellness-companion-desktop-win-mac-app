@@ -1,122 +1,149 @@
-import { useState, useEffect, useCallback, ReactNode } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import "../../assets/animations/loading.css";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useConfig } from "../../store/appStore";
+
+export interface PopupAction {
+  label: string;
+  onClick: () => void;
+  variant?: "primary" | "ghost";
+  /** Keyboard key that triggers the action, e.g. "Enter", "Escape", "s". */
+  hotkey?: string;
+  title?: string;
+}
 
 interface PopupContainerProps {
   children: ReactNode;
-  onDismiss: () => void;
-  colorAccent?: string;
-  soundEnabled?: boolean;
+  accent: string;
+  /** Called after the exit animation; the host then shows the next reminder or hides. */
+  onDone: () => void;
+  /** Called when the auto-dismiss timer elapses without any user action. */
+  onTimeout?: () => void;
+  actions: PopupAction[];
+  /** Pause the auto-dismiss timer (e.g. while an exercise countdown runs). */
+  holdTimer?: boolean;
 }
 
 export default function PopupContainer({
   children,
-  onDismiss,
-  colorAccent = "#3b93f7",
-  soundEnabled = true,
+  accent,
+  onDone,
+  onTimeout,
+  actions,
+  holdTimer = false,
 }: PopupContainerProps) {
-  const [animState, setAnimState] = useState<"entering" | "visible" | "exiting">("entering");
+  const config = useConfig();
+  const autoDismissSec = config?.popup_auto_dismiss_sec ?? 0;
+  const soundEnabled = config?.sound_enabled ?? true;
+  const [anim, setAnim] = useState<"in" | "steady" | "out">("in");
+  const [remaining, setRemaining] = useState(autoDismissSec);
+  const closedRef = useRef(false);
 
+  // Entrance + chime.
   useEffect(() => {
-    // Show the window
-    const appWindow = getCurrentWindow();
-    appWindow.show().catch(() => {});
-    appWindow.setFocus().catch(() => {});
-
-    // Play subtle chime
-    if (soundEnabled) {
-      playChime();
-    }
-
-    // Enter animation complete
-    const enterTimer = setTimeout(() => setAnimState("visible"), 400);
-    return () => clearTimeout(enterTimer);
+    if (soundEnabled) playChime();
+    const t = setTimeout(() => setAnim("steady"), 350);
+    return () => clearTimeout(t);
   }, [soundEnabled]);
 
-  const handleDismiss = useCallback(() => {
-    setAnimState("exiting");
-    setTimeout(() => {
-      const appWindow = getCurrentWindow();
-      appWindow.hide().catch(() => {});
-      onDismiss();
-    }, 300);
-  }, [onDismiss]);
+  const close = useCallback(() => {
+    if (closedRef.current) return;
+    closedRef.current = true;
+    setAnim("out");
+    setTimeout(onDone, 230);
+  }, [onDone]);
 
-  const animClass =
-    animState === "entering"
-      ? "haysu-slide-down"
-      : animState === "exiting"
-      ? "haysu-slide-up"
-      : "";
+  // Auto-dismiss countdown.
+  useEffect(() => {
+    if (!autoDismissSec || holdTimer) return;
+    const id = window.setInterval(() => {
+      setRemaining((r) => {
+        if (r <= 1) {
+          window.clearInterval(id);
+          onTimeout?.();
+          close();
+          return 0;
+        }
+        return r - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [autoDismissSec, holdTimer, close, onTimeout]);
+
+  // Keyboard shortcuts.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const a = actions.find((x) => x.hotkey && x.hotkey.toLowerCase() === e.key.toLowerCase());
+      if (a) {
+        e.preventDefault();
+        a.onClick();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [actions]);
+
+  const animClass = anim === "in" ? "animate-slide-down" : anim === "out" ? "animate-slide-up" : "";
+  const progress = autoDismissSec ? (remaining / autoDismissSec) * 100 : 0;
 
   return (
     <div
-      className="h-screen w-screen flex justify-center pt-2 bg-transparent"
-      data-tauri-drag-region
+      className={`rounded-2xl overflow-hidden border border-white/40 dark:border-border-dark backdrop-blur-xl bg-white/95 dark:bg-surface-dark/95 ${animClass}`}
+      style={{ boxShadow: `0 10px 36px -6px ${accent}55, 0 4px 16px -2px rgba(0,0,0,0.14)` }}
     >
-      <div
-        className={`
-          bg-white/95 dark:bg-surface-dark/95 backdrop-blur-xl
-          rounded-2xl shadow-2xl
-          border border-white/20 dark:border-border-dark
-          max-w-sm w-full mx-4
-          overflow-hidden
-          ${animClass}
-        `}
-        style={{
-          boxShadow: `0 8px 32px -4px ${colorAccent}30, 0 4px 16px -2px rgba(0,0,0,0.1)`,
-        }}
-      >
-        {/* Colored accent bar at top */}
+      {/* Accent / auto-dismiss bar */}
+      <div className="h-1 w-full bg-border/40 dark:bg-border-dark/40" data-tauri-drag-region>
         <div
-          className="h-1 w-full"
-          style={{ background: `linear-gradient(90deg, ${colorAccent}, ${colorAccent}88)` }}
+          className="h-full transition-[width] duration-1000 ease-linear"
+          style={{
+            width: autoDismissSec && !holdTimer ? `${progress}%` : "100%",
+            background: `linear-gradient(90deg, ${accent}, ${accent}99)`,
+          }}
         />
+      </div>
 
-        {/* Content */}
-        <div className="p-5">
-          {children}
-        </div>
+      <div className="p-4" data-tauri-drag-region>
+        {children}
+      </div>
 
-        {/* Dismiss hint */}
-        <button
-          onClick={handleDismiss}
-          className="w-full py-2.5 text-xs text-text-secondary dark:text-text-secondary-dark
-            hover:bg-surface-hover dark:hover:bg-surface-hover-dark
-            transition-colors border-t border-border/50 dark:border-border-dark/50
-            focus:outline-none"
-        >
-          Click to dismiss
-        </button>
+      <div className="flex gap-2 px-4 pb-4">
+        {actions.map((a) => (
+          <button
+            key={a.label}
+            type="button"
+            onClick={a.onClick}
+            title={a.title ?? (a.hotkey ? `Shortcut: ${a.hotkey}` : undefined)}
+            className={`h-9 rounded-xl text-xs font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-haysu-300 ${
+              a.variant === "ghost"
+                ? "px-3 text-text-secondary dark:text-text-secondary-dark hover:bg-surface-hover dark:hover:bg-surface-hover-dark"
+                : "flex-1 px-4 text-white hover:opacity-90 active:opacity-80"
+            }`}
+            style={a.variant === "ghost" ? undefined : { backgroundColor: accent }}
+          >
+            {a.label}
+          </button>
+        ))}
       </div>
     </div>
   );
 }
 
-/** Play a subtle notification chime using Web Audio API */
+/** Three-note chime via Web Audio. */
 function playChime() {
   try {
     const ctx = new AudioContext();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
-    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.08); // C#6
-    osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.16); // E6
-
-    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.08);
+    osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.16);
+    gain.gain.setValueAtTime(0.07, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
-
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.4);
-
-    // Cleanup
-    setTimeout(() => ctx.close(), 500);
+    setTimeout(() => ctx.close(), 600);
   } catch {
-    // Audio not available — silent fallback
+    // No audio device — fine.
   }
 }

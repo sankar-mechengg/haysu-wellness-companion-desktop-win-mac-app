@@ -21,7 +21,8 @@ export const EXERCISES: Exercise[] = [
     category: "upper_body",
     intensity: "light",
     duration_sec: 30,
-    description: "Slowly roll your head in a full circle — 5 times clockwise, then 5 counter-clockwise. Keep shoulders relaxed.",
+    description:
+      "Slowly roll your head in a full circle — 5 times clockwise, then 5 counter-clockwise. Keep shoulders relaxed.",
     icon: "🔄",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -31,7 +32,8 @@ export const EXERCISES: Exercise[] = [
     category: "upper_body",
     intensity: "light",
     duration_sec: 20,
-    description: "Raise both shoulders up to your ears, hold for 2 seconds, then drop. Repeat 10 times.",
+    description:
+      "Raise both shoulders up to your ears, hold for 2 seconds, then drop. Repeat 10 times.",
     icon: "⬆️",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -41,7 +43,8 @@ export const EXERCISES: Exercise[] = [
     category: "upper_body",
     intensity: "light",
     duration_sec: 30,
-    description: "Extend arms forward. Make slow circles with your wrists — 10 in each direction. Great for typing fatigue.",
+    description:
+      "Extend arms forward. Make slow circles with your wrists — 10 in each direction. Great for typing fatigue.",
     icon: "🔃",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -51,7 +54,8 @@ export const EXERCISES: Exercise[] = [
     category: "upper_body",
     intensity: "light",
     duration_sec: 30,
-    description: "Bring one arm across your chest, hold with opposite hand for 15 seconds. Switch arms.",
+    description:
+      "Bring one arm across your chest, hold with opposite hand for 15 seconds. Switch arms.",
     icon: "💪",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -61,7 +65,8 @@ export const EXERCISES: Exercise[] = [
     category: "upper_body",
     intensity: "moderate",
     duration_sec: 30,
-    description: "Clasp hands behind your back, straighten arms and lift gently. Open your chest and hold 15 seconds.",
+    description:
+      "Clasp hands behind your back, straighten arms and lift gently. Open your chest and hold 15 seconds.",
     icon: "🫁",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -71,7 +76,8 @@ export const EXERCISES: Exercise[] = [
     category: "upper_body",
     intensity: "light",
     duration_sec: 30,
-    description: "Clasp hands in front, round your upper back, push hands forward. Feel the stretch between shoulder blades. Hold 15s.",
+    description:
+      "Clasp hands in front, round your upper back, push hands forward. Feel the stretch between shoulder blades. Hold 15s.",
     icon: "🔙",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -81,7 +87,8 @@ export const EXERCISES: Exercise[] = [
     category: "upper_body",
     intensity: "moderate",
     duration_sec: 30,
-    description: "Stand with feet hip-width. Raise one arm overhead and lean to the opposite side. Hold 10s each side.",
+    description:
+      "Stand with feet hip-width. Raise one arm overhead and lean to the opposite side. Hold 10s each side.",
     icon: "↔️",
     suitable_for: ["moderate", "active"],
   },
@@ -91,7 +98,8 @@ export const EXERCISES: Exercise[] = [
     category: "upper_body",
     intensity: "light",
     duration_sec: 30,
-    description: "Extend one arm, palm up. With other hand, gently pull fingers down. Hold 15s each arm. Relieves mouse strain.",
+    description:
+      "Extend one arm, palm up. With other hand, gently pull fingers down. Hold 15s each arm. Relieves mouse strain.",
     icon: "✋",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -101,7 +109,8 @@ export const EXERCISES: Exercise[] = [
     category: "upper_body",
     intensity: "light",
     duration_sec: 20,
-    description: "Spread fingers wide for 5 seconds, then make a tight fist for 5 seconds. Repeat 5 times.",
+    description:
+      "Spread fingers wide for 5 seconds, then make a tight fist for 5 seconds. Repeat 5 times.",
     icon: "🖐️",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -111,7 +120,8 @@ export const EXERCISES: Exercise[] = [
     category: "upper_body",
     intensity: "light",
     duration_sec: 30,
-    description: "Tilt head to right, gently press with right hand. Hold 15 seconds. Switch sides. Releases neck tension.",
+    description:
+      "Tilt head to right, gently press with right hand. Hold 15 seconds. Switch sides. Releases neck tension.",
     icon: "🧘",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -121,7 +131,8 @@ export const EXERCISES: Exercise[] = [
     category: "upper_body",
     intensity: "moderate",
     duration_sec: 30,
-    description: "Sit tall, twist torso to the right placing left hand on right knee. Hold 15s. Switch sides.",
+    description:
+      "Sit tall, twist torso to the right placing left hand on right knee. Hold 15s. Switch sides.",
     icon: "🌀",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -131,7 +142,8 @@ export const EXERCISES: Exercise[] = [
     category: "upper_body",
     intensity: "light",
     duration_sec: 20,
-    description: "Sit tall, squeeze shoulder blades together as if holding a pencil between them. Hold 5s, repeat 8 times.",
+    description:
+      "Sit tall, squeeze shoulder blades together as if holding a pencil between them. Hold 5s, repeat 8 times.",
     icon: "🎯",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -143,7 +155,8 @@ export const EXERCISES: Exercise[] = [
     category: "lower_body",
     intensity: "moderate",
     duration_sec: 30,
-    description: "Stand near desk for balance. Rise up on toes, hold 2 seconds, lower slowly. Repeat 15 times.",
+    description:
+      "Stand near desk for balance. Rise up on toes, hold 2 seconds, lower slowly. Repeat 15 times.",
     icon: "🦶",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -153,7 +166,8 @@ export const EXERCISES: Exercise[] = [
     category: "lower_body",
     intensity: "light",
     duration_sec: 30,
-    description: "Sit tall, extend one leg straight out until parallel with floor. Hold 5s. Alternate legs, 8 times each.",
+    description:
+      "Sit tall, extend one leg straight out until parallel with floor. Hold 5s. Alternate legs, 8 times each.",
     icon: "🦵",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -163,7 +177,8 @@ export const EXERCISES: Exercise[] = [
     category: "lower_body",
     intensity: "moderate",
     duration_sec: 45,
-    description: "Step one foot forward into a lunge. Keep back knee low, push hips forward gently. Hold 20s each side.",
+    description:
+      "Step one foot forward into a lunge. Keep back knee low, push hips forward gently. Hold 20s each side.",
     icon: "🏋️",
     suitable_for: ["moderate", "active"],
   },
@@ -173,7 +188,8 @@ export const EXERCISES: Exercise[] = [
     category: "lower_body",
     intensity: "light",
     duration_sec: 30,
-    description: "Lift one foot off floor, draw slow circles with your toes. 10 each direction, then switch feet.",
+    description:
+      "Lift one foot off floor, draw slow circles with your toes. 10 each direction, then switch feet.",
     icon: "⭕",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -183,7 +199,8 @@ export const EXERCISES: Exercise[] = [
     category: "lower_body",
     intensity: "light",
     duration_sec: 20,
-    description: "While seated, squeeze your glutes hard for 5 seconds, release. Repeat 10 times. No one will notice!",
+    description:
+      "While seated, squeeze your glutes hard for 5 seconds, release. Repeat 10 times. No one will notice!",
     icon: "🍑",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -193,7 +210,8 @@ export const EXERCISES: Exercise[] = [
     category: "lower_body",
     intensity: "vigorous",
     duration_sec: 45,
-    description: "Lean against a wall, slide down until thighs are parallel to floor. Hold as long as comfortable, aim for 30s.",
+    description:
+      "Lean against a wall, slide down until thighs are parallel to floor. Hold as long as comfortable, aim for 30s.",
     icon: "🧱",
     suitable_for: ["moderate", "active"],
   },
@@ -203,7 +221,8 @@ export const EXERCISES: Exercise[] = [
     category: "lower_body",
     intensity: "moderate",
     duration_sec: 30,
-    description: "Stand on one leg, grab opposite ankle behind you. Pull gently toward glutes. Hold 15s each side.",
+    description:
+      "Stand on one leg, grab opposite ankle behind you. Pull gently toward glutes. Hold 15s each side.",
     icon: "🦩",
     suitable_for: ["moderate", "active"],
   },
@@ -213,7 +232,8 @@ export const EXERCISES: Exercise[] = [
     category: "lower_body",
     intensity: "light",
     duration_sec: 30,
-    description: "Sit at edge of chair, extend one leg straight. Lean forward from hips until you feel a stretch. Hold 15s each.",
+    description:
+      "Sit at edge of chair, extend one leg straight. Lean forward from hips until you feel a stretch. Hold 15s each.",
     icon: "📐",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -223,7 +243,8 @@ export const EXERCISES: Exercise[] = [
     category: "lower_body",
     intensity: "light",
     duration_sec: 20,
-    description: "Seated or standing, lift toes while keeping heels on the ground. Hold 3 seconds, repeat 12 times.",
+    description:
+      "Seated or standing, lift toes while keeping heels on the ground. Hold 3 seconds, repeat 12 times.",
     icon: "👆",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -233,7 +254,8 @@ export const EXERCISES: Exercise[] = [
     category: "lower_body",
     intensity: "moderate",
     duration_sec: 30,
-    description: "Stand tall, lift one knee toward chest. Alternate legs at a steady pace, 10 each side. Light cardio boost!",
+    description:
+      "Stand tall, lift one knee toward chest. Alternate legs at a steady pace, 10 each side. Light cardio boost!",
     icon: "🏃",
     suitable_for: ["moderate", "active"],
   },
@@ -243,7 +265,8 @@ export const EXERCISES: Exercise[] = [
     category: "lower_body",
     intensity: "light",
     duration_sec: 40,
-    description: "Sit tall, cross one ankle over opposite knee. Gently lean forward. Hold 20s each side. Opens hips.",
+    description:
+      "Sit tall, cross one ankle over opposite knee. Gently lean forward. Hold 20s each side. Opens hips.",
     icon: "4️⃣",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -253,7 +276,8 @@ export const EXERCISES: Exercise[] = [
     category: "lower_body",
     intensity: "moderate",
     duration_sec: 30,
-    description: "Hold desk for balance. Lift one leg out to the side, hold 2s, lower. 10 each side.",
+    description:
+      "Hold desk for balance. Lift one leg out to the side, hold 2s, lower. 10 each side.",
     icon: "🦿",
     suitable_for: ["moderate", "active"],
   },
@@ -265,7 +289,8 @@ export const EXERCISES: Exercise[] = [
     category: "eyes",
     intensity: "light",
     duration_sec: 20,
-    description: "Look at something 20 feet away for 20 seconds. This resets your focusing muscles and reduces eye strain.",
+    description:
+      "Look at something 20 feet away for 20 seconds. This resets your focusing muscles and reduces eye strain.",
     icon: "👀",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -275,7 +300,8 @@ export const EXERCISES: Exercise[] = [
     category: "eyes",
     intensity: "light",
     duration_sec: 20,
-    description: "Without moving your head, slowly roll your eyes in a full circle. 5 clockwise, 5 counter-clockwise.",
+    description:
+      "Without moving your head, slowly roll your eyes in a full circle. 5 clockwise, 5 counter-clockwise.",
     icon: "🔵",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -285,7 +311,8 @@ export const EXERCISES: Exercise[] = [
     category: "eyes",
     intensity: "light",
     duration_sec: 30,
-    description: "Rub palms together to warm them, then cup over closed eyes. Relax and breathe for 30 seconds. Total darkness soothes eyes.",
+    description:
+      "Rub palms together to warm them, then cup over closed eyes. Relax and breathe for 30 seconds. Total darkness soothes eyes.",
     icon: "🤲",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -295,7 +322,8 @@ export const EXERCISES: Exercise[] = [
     category: "eyes",
     intensity: "light",
     duration_sec: 30,
-    description: "Hold a pen at arm's length. Focus on it for 5 seconds, then focus on something far away for 5 seconds. Repeat 5 times.",
+    description:
+      "Hold a pen at arm's length. Focus on it for 5 seconds, then focus on something far away for 5 seconds. Repeat 5 times.",
     icon: "🔍",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -305,7 +333,8 @@ export const EXERCISES: Exercise[] = [
     category: "eyes",
     intensity: "light",
     duration_sec: 20,
-    description: "Blink rapidly 20 times, then close eyes for 10 seconds. Screen staring reduces blink rate by 60%. This resets it.",
+    description:
+      "Blink rapidly 20 times, then close eyes for 10 seconds. Screen staring reduces blink rate by 60%. This resets it.",
     icon: "😑",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -315,7 +344,8 @@ export const EXERCISES: Exercise[] = [
     category: "eyes",
     intensity: "light",
     duration_sec: 30,
-    description: "Imagine a giant figure 8 on the floor, 10 feet away. Slowly trace it with your eyes. 5 times each direction.",
+    description:
+      "Imagine a giant figure 8 on the floor, 10 feet away. Slowly trace it with your eyes. 5 times each direction.",
     icon: "♾️",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -325,7 +355,8 @@ export const EXERCISES: Exercise[] = [
     category: "eyes",
     intensity: "light",
     duration_sec: 20,
-    description: "Look straight ahead. Without moving your eyes, notice what's in your peripheral vision. Hold awareness for 20 seconds.",
+    description:
+      "Look straight ahead. Without moving your eyes, notice what's in your peripheral vision. Hold awareness for 20 seconds.",
     icon: "🌐",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -335,7 +366,8 @@ export const EXERCISES: Exercise[] = [
     category: "eyes",
     intensity: "light",
     duration_sec: 20,
-    description: "Squeeze eyes shut tightly for 3 seconds, then open wide for 3 seconds. Repeat 5 times. Relieves tension.",
+    description:
+      "Squeeze eyes shut tightly for 3 seconds, then open wide for 3 seconds. Repeat 5 times. Relieves tension.",
     icon: "😤",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -347,7 +379,8 @@ export const EXERCISES: Exercise[] = [
     category: "breathing",
     intensity: "light",
     duration_sec: 60,
-    description: "Inhale 4 seconds → Hold 4 seconds → Exhale 4 seconds → Hold 4 seconds. Repeat 4 cycles. Used by Navy SEALs.",
+    description:
+      "Inhale 4 seconds → Hold 4 seconds → Exhale 4 seconds → Hold 4 seconds. Repeat 4 cycles. Used by Navy SEALs.",
     icon: "📦",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -357,7 +390,8 @@ export const EXERCISES: Exercise[] = [
     category: "breathing",
     intensity: "light",
     duration_sec: 60,
-    description: "Inhale through nose for 4 seconds → Hold for 7 seconds → Exhale through mouth for 8 seconds. 3 cycles. Deeply calming.",
+    description:
+      "Inhale through nose for 4 seconds → Hold for 7 seconds → Exhale through mouth for 8 seconds. 3 cycles. Deeply calming.",
     icon: "🌊",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -367,7 +401,8 @@ export const EXERCISES: Exercise[] = [
     category: "breathing",
     intensity: "light",
     duration_sec: 45,
-    description: "Place hand on belly. Breathe in deeply through nose, expanding belly (not chest). Slow exhale. 8 breaths.",
+    description:
+      "Place hand on belly. Breathe in deeply through nose, expanding belly (not chest). Slow exhale. 8 breaths.",
     icon: "🫃",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -377,7 +412,8 @@ export const EXERCISES: Exercise[] = [
     category: "breathing",
     intensity: "light",
     duration_sec: 60,
-    description: "Close right nostril, inhale left. Close left, exhale right. Inhale right, close right, exhale left. 5 cycles.",
+    description:
+      "Close right nostril, inhale left. Close left, exhale right. Inhale right, close right, exhale left. 5 cycles.",
     icon: "👃",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -387,7 +423,8 @@ export const EXERCISES: Exercise[] = [
     category: "breathing",
     intensity: "light",
     duration_sec: 30,
-    description: "Inhale through nose for 2 seconds. Purse lips like blowing a candle, exhale slowly for 4 seconds. 6 breaths.",
+    description:
+      "Inhale through nose for 2 seconds. Purse lips like blowing a candle, exhale slowly for 4 seconds. 6 breaths.",
     icon: "💨",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -397,7 +434,8 @@ export const EXERCISES: Exercise[] = [
     category: "breathing",
     intensity: "moderate",
     duration_sec: 20,
-    description: "Inhale deeply through nose. Open mouth wide, stick out tongue, exhale forcefully with a 'HAAA'. 5 times. Releases tension.",
+    description:
+      "Inhale deeply through nose. Open mouth wide, stick out tongue, exhale forcefully with a 'HAAA'. 5 times. Releases tension.",
     icon: "🦁",
     suitable_for: ["moderate", "active"],
   },
@@ -407,7 +445,8 @@ export const EXERCISES: Exercise[] = [
     category: "breathing",
     intensity: "light",
     duration_sec: 45,
-    description: "Close eyes, inhale deeply. Exhale while humming 'mmm' with lips closed. Feel vibration in skull. 6 breaths.",
+    description:
+      "Close eyes, inhale deeply. Exhale while humming 'mmm' with lips closed. Feel vibration in skull. 6 breaths.",
     icon: "🐝",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -417,7 +456,8 @@ export const EXERCISES: Exercise[] = [
     category: "breathing",
     intensity: "light",
     duration_sec: 90,
-    description: "Tense each muscle group for 5s then release: fists → forearms → shoulders → face → core → legs. Full body reset.",
+    description:
+      "Tense each muscle group for 5s then release: fists → forearms → shoulders → face → core → legs. Full body reset.",
     icon: "🧊",
     suitable_for: ["sedentary", "moderate", "active"],
   },
@@ -447,7 +487,10 @@ export function getRandomExercise(workStyle: WorkStyle = "moderate"): Exercise {
 }
 
 /** Get category display info */
-export const CATEGORY_INFO: Record<ExerciseCategory, { label: string; emoji: string; color: string }> = {
+export const CATEGORY_INFO: Record<
+  ExerciseCategory,
+  { label: string; emoji: string; color: string }
+> = {
   upper_body: { label: "Upper Body", emoji: "💪", color: "#60b8ff" },
   lower_body: { label: "Lower Body", emoji: "🦵", color: "#7dd3a8" },
   eyes: { label: "Eyes", emoji: "👀", color: "#c084fc" },

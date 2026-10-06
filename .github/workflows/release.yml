@@ -3,100 +3,118 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build (e.g. v1.1.0)"
+        required: true
+
+permissions:
+  contents: write
 
 jobs:
+  verify:
+    name: Verify tag matches manifests
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - id: v
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          PKG=$(node -p "require('./package.json').version")
+          CONF=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          CARGO=$(grep -m1 '^version' src-tauri/Cargo.toml | sed -E 's/version *= *"([^"]+)"/\1/')
+          echo "tag=$VERSION package.json=$PKG tauri.conf.json=$CONF Cargo.toml=$CARGO"
+          if [ "$VERSION" != "$PKG" ] || [ "$VERSION" != "$CONF" ] || [ "$VERSION" != "$CARGO" ]; then
+            echo "::error::Tag $TAG does not match the version in the manifests. Run: npm run bump -- $VERSION"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
   build:
-    permissions:
-      contents: write
+    name: Build (${{ matrix.name }})
+    needs: verify
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
-            target: 'aarch64-apple-darwin'
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
-            target: 'x86_64-apple-darwin'
-          - platform: 'windows-latest'
-            args: ''
-            target: ''
-
+          - name: macOS Apple Silicon
+            platform: macos-latest
+            args: --target aarch64-apple-darwin
+            target: aarch64-apple-darwin
+          - name: macOS Intel
+            platform: macos-latest
+            args: --target x86_64-apple-darwin
+            target: x86_64-apple-darwin
+          - name: Windows x64
+            platform: windows-latest
+            args: ""
+            target: ""
+          - name: Linux x64
+            platform: ubuntu-22.04
+            args: ""
+            target: ""
     runs-on: ${{ matrix.platform }}
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
+            libxdo-dev libssl-dev libgtk-3-dev libayatana-appindicator3-dev libx11-dev libxss-dev
+
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
+      - uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
-      - name: Install frontend dependencies
-        run: npm ci
+      - run: npm ci
 
-      # macOS: install Apple API key for signing (optional)
-      # Uncomment and configure these if you have an Apple Developer ID
-      # - name: Import Apple certificates
-      #   if: matrix.platform == 'macos-latest'
-      #   env:
-      #     APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-      #     APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      #   run: |
-      #     echo $APPLE_CERTIFICATE | base64 --decode > certificate.p12
-      #     security create-keychain -p "" build.keychain
-      #     security import certificate.p12 -k build.keychain -P $APPLE_CERTIFICATE_PASSWORD -T /usr/bin/codesign
-      #     security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        shell: bash
+        run: |
+          VERSION="${{ needs.verify.outputs.version }}"
+          node scripts/release-notes.mjs "$VERSION" > RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
 
-      - name: Build Tauri app
+      - name: Build and publish
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing (uncomment when ready)
-          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          # APPLE_ID: ${{ secrets.APPLE_ID }}
-          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # macOS code signing / notarisation, when the secrets exist:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Haysu v__VERSION__'
-          releaseBody: |
-            ## Haysu ${{ github.ref_name }}
-
-            Your desktop wellness companion — water reminders, movement exercises, and Pomodoro timer.
-
-            ### Downloads
-            - **Windows**: `.msi` (recommended) or `.exe` (NSIS installer)
-            - **macOS (Apple Silicon)**: `.dmg` (aarch64)
-            - **macOS (Intel)**: `.dmg` (x86_64)
-
-            ### What's New
-            See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
-
-            ### First Run
-            - **Windows**: Run the installer, Haysu starts automatically
-            - **macOS**: Open the `.dmg`, drag Haysu to Applications. On first run, right-click → Open (unsigned build)
-          releaseDraft: true
+          tagName: v__VERSION__
+          releaseName: "Haysu v__VERSION__"
+          releaseBodyFile: RELEASE_NOTES.md
+          releaseDraft: false
           prerelease: false
+          includeUpdaterJson: true
+          updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
-
-  # Create a universal macOS binary (optional, runs after both mac builds)
-  # Uncomment if you want a single universal .dmg
-  # universal-macos:
-  #   needs: build
-  #   runs-on: macos-latest
-  #   steps:
-  #     - name: Create universal binary
-  #       run: echo "Universal binary creation would go here"

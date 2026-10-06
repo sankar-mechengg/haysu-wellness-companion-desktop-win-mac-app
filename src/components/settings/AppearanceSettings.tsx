@@ -1,125 +1,82 @@
-import { useState, useEffect, useCallback } from "react";
-import Toggle from "../common/Toggle";
 import Card from "../common/Card";
-import { useTheme } from "../../hooks/useTheme";
-import { useSettings } from "../../hooks/useSettings";
-import { Window as TauriWindow } from "@tauri-apps/api/window";
+import Toggle from "../common/Toggle";
+import Segmented from "../common/Segmented";
+import { Rows, SectionHeader } from "../common/Section";
+import { useConfigPatch } from "../../hooks/useConfigPatch";
+import { useConfig } from "../../store/appStore";
+import type { Theme } from "../../lib/api";
 
 export default function AppearanceSettings() {
-  const { theme, setTheme } = useTheme();
-  const { settings, updateSetting } = useSettings();
-  const [widgetOnTop, setWidgetOnTop] = useState(true);
-  const [widgetVisible, setWidgetVisible] = useState(true);
-
-  useEffect(() => {
-    if (settings) {
-      setWidgetOnTop(settings.widget_always_on_top !== "false");
-      setWidgetVisible(settings.widget_visible !== "false");
-    }
-  }, [settings]);
-
-  const handleThemeToggle = useCallback(async () => {
-    const next = theme === "light" ? "dark" : "light";
-    await setTheme(next);
-  }, [theme, setTheme]);
-
-  const handleWidgetOnTop = useCallback(async (checked: boolean) => {
-    setWidgetOnTop(checked);
-    await updateSetting("widget_always_on_top", String(checked));
-    // Apply to widget window immediately
-    try {
-      const widgetWin = await TauriWindow.getByLabel("widget");
-      if (widgetWin) {
-        await widgetWin.setAlwaysOnTop(checked);
-      }
-    } catch {
-      // Widget may not exist yet
-    }
-  }, [updateSetting]);
-
-  const handleWidgetVisible = useCallback(async (checked: boolean) => {
-    setWidgetVisible(checked);
-    await updateSetting("widget_visible", String(checked));
-    try {
-      const widgetWin = await TauriWindow.getByLabel("widget");
-      if (widgetWin) {
-        if (checked) {
-          await widgetWin.show();
-          await widgetWin.setFocus();
-        } else {
-          await widgetWin.hide();
-        }
-      }
-    } catch {
-      // Widget may not exist yet
-    }
-  }, [updateSetting]);
+  const config = useConfig();
+  const patch = useConfigPatch();
+  if (!config) return null;
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <div>
-        <h3 className="text-sm font-semibold text-text-primary dark:text-text-primary-dark">Appearance</h3>
-        <p className="text-xs text-text-secondary dark:text-text-secondary-dark mt-0.5">
-          Customize how Haysu looks and behaves
-        </p>
-      </div>
+    <div className="space-y-4">
+      <SectionHeader
+        title="Appearance"
+        description="Theme applies to every Haysu window at once."
+      />
 
-      {/* Theme */}
       <Card padding="md">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h4 className="text-sm font-medium text-text-primary dark:text-text-primary-dark">Theme</h4>
-            <p className="text-xs text-text-secondary dark:text-text-secondary-dark mt-0.5">
-              Currently: {theme === "light" ? "☀️ Light" : "🌙 Dark"}
+            <p className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+              Theme
+            </p>
+            <p className="text-xs text-text-secondary dark:text-text-secondary-dark">
+              System follows your OS setting
             </p>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setTheme("light")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                theme === "light"
-                  ? "bg-haysu-500 text-white"
-                  : "bg-surface dark:bg-surface-dark text-text-secondary border border-border dark:border-border-dark"
-              }`}
-            >
-              ☀️ Light
-            </button>
-            <button
-              onClick={() => setTheme("dark")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                theme === "dark"
-                  ? "bg-haysu-500 text-white"
-                  : "bg-surface dark:bg-surface-dark text-text-secondary border border-border dark:border-border-dark"
-              }`}
-            >
-              🌙 Dark
-            </button>
-          </div>
+          <Segmented<Theme>
+            value={config.theme}
+            onChange={(v) => patch({ theme: v })}
+            options={[
+              { value: "light", label: "Light", icon: "☀️" },
+              { value: "dark", label: "Dark", icon: "🌙" },
+              { value: "system", label: "System", icon: "🖥️" },
+            ]}
+          />
         </div>
       </Card>
 
-      {/* Widget settings */}
-      <Card padding="md" className="space-y-4">
-        <h4 className="text-sm font-medium text-text-primary dark:text-text-primary-dark">Floating Widget</h4>
-        <Toggle
-          checked={widgetVisible}
-          onChange={handleWidgetVisible}
-          label="Show floating widget"
-          description="Minimal timer widget visible on your desktop"
-        />
-        <Toggle
-          checked={widgetOnTop}
-          onChange={handleWidgetOnTop}
-          label="Always on top"
-          description="Widget stays above other windows"
-        />
-      </Card>
-
-      {/* Popup position info */}
-      <Card padding="md" variant="transparent">
-        <p className="text-xs text-text-secondary dark:text-text-secondary-dark text-center">
-          Reminder popups appear from the top center. Drag to reposition.
-        </p>
+      <Card padding="md">
+        <h4 className="text-sm font-semibold text-text-primary dark:text-text-primary-dark mb-3">
+          Floating widget
+        </h4>
+        <Rows>
+          <Toggle
+            label="Show the widget"
+            description="The small countdown pill on your desktop. Drag it by the ⋮⋮ handle."
+            checked={config.widget_visible}
+            onChange={(v) => patch({ widget_visible: v })}
+          />
+          <Toggle
+            label="Always on top"
+            description="Keep the widget above other windows"
+            checked={config.widget_always_on_top}
+            onChange={(v) => patch({ widget_always_on_top: v })}
+          />
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                Position
+              </p>
+              <p className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                {config.widget_x !== null ? "Remembered where you left it" : "Centred on screen"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                patch({ widget_x: null, widget_y: null, widget_visible: true }, "Widget re-centred")
+              }
+              className="text-xs text-haysu-500 hover:text-haysu-600 font-medium"
+            >
+              Re-centre
+            </button>
+          </div>
+        </Rows>
       </Card>
     </div>
   );

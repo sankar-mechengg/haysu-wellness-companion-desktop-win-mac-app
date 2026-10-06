@@ -1,4 +1,6 @@
-pub mod user;
-pub mod settings;
-pub mod stats;
+pub mod config;
 pub mod export;
+pub mod stats;
+pub mod system;
+pub mod timers;
+pub mod user;

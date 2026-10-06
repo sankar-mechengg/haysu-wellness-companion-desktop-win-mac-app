@@ -1,83 +1,71 @@
 import { useState } from "react";
-import DailyView from "./DailyView";
-import WeeklyView from "./WeeklyView";
+import TodayView from "./TodayView";
+import WeekView from "./WeekView";
 import ExportButton from "./ExportButton";
+import UpdateBanner from "./UpdateBanner";
 import AnimatedH from "../common/AnimatedH";
-import { useAppStore } from "../../store/appStore";
+import Segmented from "../common/Segmented";
+import { api } from "../../lib/api";
+import { useProfile } from "../../store/appStore";
 
-type Tab = "daily" | "weekly";
+type Tab = "today" | "week";
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 5) return "Burning the midnight oil";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  if (h < 21) return "Good evening";
+  return "Winding down";
+}
 
 export default function DashboardLayout() {
-  const [activeTab, setActiveTab] = useState<Tab>("daily");
-  const userName = useAppStore((s) => s.userName);
+  const [tab, setTab] = useState<Tab>("today");
+  const profile = useProfile();
 
   return (
     <div className="h-screen w-screen bg-bg dark:bg-bg-dark flex flex-col">
-      {/* Header */}
-      <div className="px-6 pt-5 pb-3">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <AnimatedH size={28} />
-            <div>
-              <h1 className="text-lg font-bold text-text-primary dark:text-text-primary-dark">
-                Dashboard
+      <header className="px-6 pt-5 pb-3">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <AnimatedH size={32} />
+            <div className="min-w-0">
+              <h1 className="text-lg font-bold text-text-primary dark:text-text-primary-dark leading-tight">
+                {greeting()}
+                {profile?.name ? `, ${profile.name}` : ""}
               </h1>
-              {userName && (
-                <p className="text-xs text-text-secondary dark:text-text-secondary-dark">
-                  Hey {userName}, here's how you're doing
-                </p>
-              )}
+              <p className="text-xs text-text-secondary dark:text-text-secondary-dark truncate">
+                Here's how you're taking care of yourself.
+              </p>
             </div>
           </div>
-          <ExportButton />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <ExportButton />
+            <button
+              type="button"
+              onClick={() => api.showWindow("settings")}
+              className="h-8 px-3 rounded-xl text-xs font-medium border border-border dark:border-border-dark bg-surface dark:bg-surface-dark text-text-primary dark:text-text-primary-dark hover:bg-surface-hover dark:hover:bg-surface-hover-dark"
+            >
+              ⚙️ Settings
+            </button>
+          </div>
         </div>
+        <UpdateBanner />
+        <Segmented
+          value={tab}
+          onChange={setTab}
+          fullWidth
+          ariaLabel="Dashboard view"
+          options={[
+            { value: "today", label: "Today", icon: "📋" },
+            { value: "week", label: "This week", icon: "📊" },
+          ]}
+        />
+      </header>
 
-        {/* Tab bar */}
-        <div className="flex gap-1 bg-surface dark:bg-surface-dark rounded-xl p-1 border border-border/50 dark:border-border-dark/50">
-          <TabButton
-            active={activeTab === "daily"}
-            onClick={() => setActiveTab("daily")}
-          >
-            📋 Today
-          </TabButton>
-          <TabButton
-            active={activeTab === "weekly"}
-            onClick={() => setActiveTab("weekly")}
-          >
-            📊 Weekly
-          </TabButton>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
-        {activeTab === "daily" ? <DailyView /> : <WeeklyView />}
-      </div>
+      <main className="flex-1 overflow-y-auto px-6 pb-6">
+        {tab === "today" ? <TodayView /> : <WeekView />}
+      </main>
     </div>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        flex-1 py-2 px-4 text-sm font-medium rounded-lg transition-all duration-200
-        ${active
-          ? "bg-haysu-500 text-white shadow-sm"
-          : "text-text-secondary dark:text-text-secondary-dark hover:text-text-primary dark:hover:text-text-primary-dark"
-        }
-      `}
-    >
-      {children}
-    </button>
   );
 }

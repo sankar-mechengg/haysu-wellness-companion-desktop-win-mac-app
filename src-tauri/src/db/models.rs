@@ -15,12 +15,6 @@ pub struct UserProfile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Setting {
-    pub key: String,
-    pub value: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WaterEntry {
     pub id: i64,
     pub timestamp: String,
@@ -47,7 +41,7 @@ pub struct PomodoroEntry {
     pub completed: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DailyStats {
     pub date: String,
     pub water_consumed: i64,
@@ -60,17 +54,15 @@ pub struct DailyStats {
     pub pomodoro_total_minutes: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WeeklyStats {
-    pub days: Vec<DailyStats>,
-    pub week_start: String,
-    pub week_end: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TimerState {
-    pub timer_type: String,
-    pub remaining_secs: u64,
-    pub is_running: bool,
-    pub next_reminder: String,
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct Streaks {
+    /// Consecutive active days ending today (or yesterday if today is empty so far).
+    pub current_streak: i64,
+    pub longest_streak: i64,
+    /// Days with any activity in the last 30 days.
+    pub active_days_30: i64,
+    /// Consecutive days the water goal was met, ending today or yesterday.
+    pub water_goal_streak: i64,
+    /// Whether today already counts as active.
+    pub today_active: bool,
 }

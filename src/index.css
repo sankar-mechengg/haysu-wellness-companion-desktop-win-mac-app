@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
-/* ─── Haysu Custom Theme ─── */
+/* Tailwind v4: dark mode follows the `dark` class on <html>, not the OS. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Haysu design tokens ─── */
 @theme {
   --color-haysu-50: #f0f7ff;
   --color-haysu-100: #e0efff;
@@ -9,89 +12,140 @@
   --color-haysu-400: #5aabff;
   --color-haysu-500: #3b93f7;
   --color-haysu-600: #2570c9;
+  --color-haysu-700: #1b56a0;
 
   --color-water: #60b8ff;
   --color-water-light: #e8f4ff;
-  --color-move: #7dd3a8;
+  --color-move: #5cc99a;
   --color-move-light: #e8f8f0;
   --color-tomato: #ff7b7b;
   --color-tomato-light: #fff0f0;
+  --color-amber: #f5b53f;
+  --color-amber-light: #fff7e6;
 
-  --color-bg: #f8f9fc;
-  --color-bg-dark: #1a1b2e;
+  --color-bg: #f6f7fb;
+  --color-bg-dark: #15162a;
   --color-surface: #ffffff;
-  --color-surface-dark: #252640;
-  --color-surface-hover: #f1f3f8;
-  --color-surface-hover-dark: #2e2f4a;
-
+  --color-surface-dark: #22233c;
+  --color-surface-hover: #eef1f7;
+  --color-surface-hover-dark: #2c2d4a;
   --color-text-primary: #1a1b2e;
   --color-text-primary-dark: #e8e9f0;
   --color-text-secondary: #6b7280;
   --color-text-secondary-dark: #9ca3af;
-
   --color-border: #e5e7eb;
-  --color-border-dark: #374151;
+  --color-border-dark: #363856;
 
-  --font-sans: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans:
+    "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
 
-  --animate-slide-down: slide-down 0.4s ease-out;
-  --animate-slide-up: slide-up 0.3s ease-in;
-  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-fade-in: fade-in 0.25s ease-out;
+  --animate-slide-down: slide-down 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-slide-up: slide-up 0.25s ease-in forwards;
   --animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
-  --animate-spin-h: spin-h 1.2s ease-in-out;
+  --animate-spin-h: spin-h 1.2s ease-in-out infinite;
+  --animate-pop: pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1.2);
 
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
   @keyframes slide-down {
-    from { transform: translateY(-100%); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from {
+      transform: translateY(-110%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
   }
   @keyframes slide-up {
-    from { transform: translateY(0); opacity: 1; }
-    to { transform: translateY(-100%); opacity: 0; }
-  }
-  @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateY(-110%);
+      opacity: 0;
+    }
   }
   @keyframes pulse-soft {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
   }
   @keyframes spin-h {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes pop {
+    from {
+      transform: scale(0.92);
+      opacity: 0;
+    }
+    to {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 }
 
-/* ─── Base Styles ─── */
-html, body, #root {
+/* ─── Base ─── */
+html,
+body,
+#root {
   margin: 0;
   padding: 0;
   height: 100%;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
 }
 
-/* Light mode (default) */
 body {
   background-color: var(--color-bg);
   color: var(--color-text-primary);
+  user-select: none;
+  -webkit-user-select: none;
 }
-
-/* Dark mode */
-body.dark {
+html.dark body {
   background-color: var(--color-bg-dark);
   color: var(--color-text-primary-dark);
 }
+input,
+textarea,
+[contenteditable] {
+  user-select: text;
+  -webkit-user-select: text;
+}
 
-/* ─── Transparent windows (popup, widget) ─── */
-body.transparent {
-  background-color: transparent;
+/* Transparent windows (widget, popup): no page background at all. */
+html.transparent,
+html.transparent body {
+  background: transparent !important;
 }
 
 /* ─── Scrollbar ─── */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -100,11 +154,11 @@ body.transparent {
   background: #c4c7cc;
   border-radius: 3px;
 }
-body.dark ::-webkit-scrollbar-thumb {
+html.dark ::-webkit-scrollbar-thumb {
   background: #4b5563;
 }
 
-/* ─── Window drag region ─── */
+/* ─── Drag regions ─── */
 [data-tauri-drag-region] {
   cursor: grab;
 }
@@ -117,7 +171,44 @@ body.dark ::-webkit-scrollbar-thumb {
   background-color: var(--color-haysu-200);
   color: var(--color-text-primary);
 }
-body.dark ::selection {
+html.dark ::selection {
   background-color: var(--color-haysu-600);
   color: white;
+}
+
+/* ─── Range input thumb ─── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--color-haysu-500);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+}
+input[type="range"]:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+}
+
+/* ─── Reduced motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -1,7 +1,7 @@
 {
-  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
+  "$schema": "https://schema.tauri.app/config/2",
   "productName": "Haysu",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "identifier": "com.haysu.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -10,87 +10,51 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "withGlobalTauri": true,
+    "withGlobalTauri": false,
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: http://asset.localhost; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://github.com https://*.github.com https://objects.githubusercontent.com",
+      "devCsp": "default-src 'self' http://localhost:1420 ws://localhost:1420 ws://localhost:1421 data: blob:; script-src 'self' http://localhost:1420 'unsafe-inline' 'unsafe-eval'; style-src 'self' http://localhost:1420 'unsafe-inline'; img-src 'self' data: blob: http://localhost:1420; font-src 'self' data: http://localhost:1420; connect-src 'self' ipc: http://ipc.localhost http://localhost:1420 ws://localhost:1420 ws://localhost:1421"
+    },
     "windows": [
       {
-        "label": "main",
+        "label": "widget",
         "title": "Haysu",
         "visible": false,
-        "width": 1,
-        "height": 1,
-        "skipTaskbar": true,
-        "decorations": false,
-        "url": "/"
-      },
-      {
-        "label": "popup",
-        "title": "Haysu Reminder",
-        "visible": false,
-        "width": 420,
-        "height": 220,
+        "width": 260,
+        "height": 56,
         "decorations": false,
         "alwaysOnTop": true,
         "resizable": false,
-        "center": true,
         "transparent": true,
-        "skipTaskbar": true,
-        "url": "/?window=popup"
-      },
-      {
-        "label": "widget",
-        "title": "Haysu Widget",
-        "visible": false,
-        "width": 240,
-        "height": 52,
-        "decorations": false,
-        "alwaysOnTop": true,
-        "resizable": true,
-        "transparent": true,
+        "shadow": false,
         "skipTaskbar": true,
         "center": true,
         "url": "/?window=widget"
       },
       {
-        "label": "dashboard",
-        "title": "Haysu Dashboard",
+        "label": "popup",
+        "title": "Haysu Reminder",
         "visible": false,
-        "width": 920,
-        "height": 670,
-        "center": true,
-        "url": "/?window=dashboard"
-      },
-      {
-        "label": "onboarding",
-        "title": "Welcome to Haysu",
-        "visible": false,
-        "width": 620,
-        "height": 520,
+        "width": 440,
+        "height": 260,
         "decorations": false,
         "alwaysOnTop": true,
-        "center": true,
         "resizable": false,
-        "url": "/?window=onboarding"
-      },
-      {
-        "label": "settings",
-        "title": "Haysu Settings",
-        "visible": false,
-        "width": 560,
-        "height": 620,
-        "center": true,
-        "url": "/?window=settings"
+        "transparent": true,
+        "shadow": false,
+        "skipTaskbar": true,
+        "focus": false,
+        "url": "/?window=popup"
       }
-    ],
-    "trayIcon": {
-      "id": "main",
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true,
-      "tooltip": "Haysu — Wellness Companion"
-    }
+    ]
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
+    "category": "Healthcare",
+    "shortDescription": "Desktop wellness companion",
+    "longDescription": "Water reminders, guided movement breaks and a Pomodoro timer that live in your system tray.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -101,10 +65,29 @@
     "windows": {
       "wix": {
         "language": "en-US"
+      },
+      "nsis": {
+        "installMode": "currentUser"
       }
     },
     "macOS": {
       "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFFQzZBNjgzOTQyQTYxREUKUldUZVlTcVVnNmJHcnFWVHpqdDVaRVJSbWRJbk13NW00MW9iVGVlWk5IdHN6RHpFOFljdlptUnQK",
+      "endpoints": [
+        "https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

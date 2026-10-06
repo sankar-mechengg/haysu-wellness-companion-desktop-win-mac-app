@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import {
   Bar,
-  BarChart,
   CartesianGrid,
+  ComposedChart,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -158,7 +158,7 @@ export default function TrendsPanel() {
           <div className="h-44">
             {series.some((d) => d.pain != null || d.sleep != null) ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={series} margin={{ top: 6, right: 6, left: -22, bottom: 0 }}>
+                <ComposedChart data={series} margin={{ top: 6, right: 6, left: -22, bottom: 0 }}>
                   <CartesianGrid stroke={t.grid} vertical={false} />
                   <XAxis
                     dataKey="label"
@@ -185,7 +185,7 @@ export default function TrendsPanel() {
                     dot={{ r: 2 }}
                     connectNulls
                   />
-                </BarChart>
+                </ComposedChart>
               </ResponsiveContainer>
             ) : (
               <Empty>Pain levels and sleep hours show up here.</Empty>

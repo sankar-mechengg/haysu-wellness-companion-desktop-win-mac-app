@@ -14,6 +14,7 @@ use rand::seq::SliceRandom;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::care::{self, CareRoutine};
 use crate::config::{AppConfig, ConfigState, ReminderStyle};
 use crate::db::{time, DbState};
 use crate::health::{self, MedEvent, MedicineTracker, NextDose};
@@ -294,6 +295,9 @@ pub struct SchedulerState {
     widget_pos: Option<((i32, i32), Instant)>,
     last_tray_key: String,
     pub medicines: MedicineTracker,
+    pub care: Vec<CareRoutine>,
+    last_care_minute: Option<String>,
+    last_briefing_minute: Option<String>,
 }
 
 impl SchedulerState {
@@ -312,6 +316,9 @@ impl SchedulerState {
             widget_pos: None,
             last_tray_key: String::new(),
             medicines: MedicineTracker::default(),
+            care: Vec::new(),
+            last_care_minute: None,
+            last_briefing_minute: None,
         }
     }
 
@@ -412,6 +419,8 @@ fn tick(app: &AppHandle) {
     let mut pomo_log_ops: Vec<PomoLogOp> = Vec::new();
     let mut widget_pos_to_save: Option<(i32, i32)> = None;
     let mut dose_ops: Vec<DoseOp> = Vec::new();
+    let mut care_due: Vec<CareRoutine> = Vec::new();
+    let mut briefing_due = false;
     let snapshot;
     let tray_info;
     let tray_changed;
@@ -502,6 +511,32 @@ fn tick(app: &AppHandle) {
             }
         }
 
+        // Care routines and the scheduled briefing: checked once per minute.
+        {
+            let local = Local::now();
+            let minute_key = local.format("%Y-%m-%d %H:%M").to_string();
+            if st.last_care_minute.as_deref() != Some(minute_key.as_str()) {
+                st.last_care_minute = Some(minute_key.clone());
+                let allowed = st.paused_reason.is_none() || cfg.medicine_override_dnd;
+                if allowed {
+                    let today = local.date_naive();
+                    let now_t = local.time();
+                    care_due = care::due_now(&st.care, today, now_t, &cfg.care_default_time)
+                        .into_iter()
+                        .cloned()
+                        .collect();
+                }
+                if !cfg.ai_briefing_time.is_empty()
+                    && cfg.ai_last_briefing_date != time::today_local()
+                    && local.format("%H:%M").to_string() >= cfg.ai_briefing_time
+                    && st.last_briefing_minute.as_deref() != Some(minute_key.as_str())
+                {
+                    st.last_briefing_minute = Some(minute_key);
+                    briefing_due = true;
+                }
+            }
+        }
+
         // Water / movement.
         if st.water.fire_if_due(now) {
             let id = st.next_id();
@@ -557,6 +592,36 @@ fn tick(app: &AppHandle) {
     }
 
     // ── Side effects, lock released ──
+    if !care_due.is_empty() {
+        let today = time::today_local();
+        if let Ok(conn) = app.state::<DbState>().conn.lock() {
+            for r in &care_due {
+                let _ = care::store::mark_reminded(&conn, r.id, &today);
+            }
+        }
+        for r in &care_due {
+            let data = serde_json::json!({
+                "id": r.id, "name": r.name, "icon": r.icon, "kind": r.kind, "notes": r.notes,
+                "interval_days": r.interval_days, "last_done": r.last_done,
+            })
+            .to_string();
+            let id = with_state(app, |st, _, _| st.next_id()).unwrap_or(0);
+            deliver_reminder(
+                app,
+                &cfg,
+                ReminderEvent {
+                    id,
+                    kind: "care",
+                    message: format!("{} {}", r.icon, r.name),
+                    data: Some(data),
+                },
+            );
+        }
+        reload_care(app);
+    }
+    if briefing_due {
+        spawn_briefing(app);
+    }
     if !dose_ops.is_empty() {
         apply_dose_ops(app, dose_ops);
     }
@@ -670,6 +735,61 @@ fn apply_dose_ops(app: &AppHandle, ops: Vec<DoseOp>) {
     if changed {
         let _ = app.emit(crate::commands::health::EV_HEALTH, "doses");
     }
+}
+
+/// Reload care routines into the scheduler (startup and after edits).
+pub fn reload_care(app: &AppHandle) {
+    let db = app.state::<DbState>();
+    let routines = db
+        .conn
+        .lock()
+        .ok()
+        .and_then(|c| care::store::list(&c).ok())
+        .unwrap_or_default();
+    with_state(app, |st, _, _| st.care = routines);
+}
+
+/// Generate the scheduled daily briefing in the background.
+fn spawn_briefing(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let mut next = app.state::<ConfigState>().get();
+        next.ai_last_briefing_date = time::today_local();
+        crate::commands::config::commit_config_quiet(&app, next.clone());
+        let input = crate::commands::ai::SendInput {
+            conversation_id: None,
+            message: String::new(),
+            kind: Some("briefing".into()),
+            images: vec![],
+        };
+        match crate::commands::ai::run_chat(&app, input).await {
+            Ok(res) => {
+                let first_line = res
+                    .message
+                    .content
+                    .lines()
+                    .find(|l| !l.trim().is_empty())
+                    .unwrap_or("Your daily briefing is ready")
+                    .trim_start_matches('#')
+                    .trim()
+                    .chars()
+                    .take(120)
+                    .collect::<String>();
+                let id = with_state(&app, |st, _, _| st.next_id()).unwrap_or(0);
+                deliver_reminder(
+                    &app,
+                    &next,
+                    ReminderEvent {
+                        id,
+                        kind: "briefing",
+                        message: first_line,
+                        data: Some(res.conversation_id.to_string()),
+                    },
+                );
+            }
+            Err(e) => log::warn!("daily briefing skipped: {e}"),
+        }
+    });
 }
 
 /// Reload medicines and today's dose rows into the tracker (startup and after edits).
@@ -808,6 +928,8 @@ fn deliver_reminder(app: &AppHandle, cfg: &AppConfig, r: ReminderEvent) {
             "water" => "Haysu · Water",
             "movement" => "Haysu · Move",
             "medicine" => "Haysu · Medicine",
+            "care" => "Haysu · Care routine",
+            "briefing" => "Haysu · Daily briefing",
             _ => "Haysu · Pomodoro",
         };
         crate::notify::native(app, title, &r.message);

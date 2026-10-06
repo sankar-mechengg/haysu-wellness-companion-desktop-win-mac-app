@@ -38,7 +38,7 @@ export default function GeneralSettings() {
   const reset = async (scope: "logs" | "all") => {
     const ok = await ask(
       scope === "logs"
-        ? "Delete all water, movement and Pomodoro history? Your profile and settings stay."
+        ? "Delete all water, movement, Pomodoro, food and AI chat history? Profile, settings, medicines, diary and routines stay."
         : "Delete everything, including your profile and settings, and start the setup again?",
       { title: "Reset Haysu", kind: "warning", okLabel: "Delete", cancelLabel: "Cancel" }
     );
@@ -115,13 +115,10 @@ export default function GeneralSettings() {
           Your data
         </h4>
         <p className="text-xs text-text-secondary dark:text-text-secondary-dark mb-3">
-          Everything stays on this computer in a local SQLite file. Export it from the dashboard any
-          time.
+          Everything stays on this computer in a local SQLite file. Full backups and health
+          snapshots live in the Backup tab.
         </p>
         <div className="flex gap-2 flex-wrap">
-          <Button variant="secondary" size="sm" onClick={() => api.showWindow("dashboard")}>
-            Open dashboard to export
-          </Button>
           <Button variant="secondary" size="sm" onClick={() => reset("logs")} disabled={resetting}>
             Clear history
           </Button>

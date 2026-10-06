@@ -57,7 +57,7 @@ pub fn db_path(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 /// Current schema version. Bump when adding a migration.
-pub const SCHEMA_VERSION: i64 = 3;
+pub const SCHEMA_VERSION: i64 = 4;
 
 fn migrate(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(
@@ -92,6 +92,12 @@ fn migrate(conn: &Connection) -> Result<(), String> {
         conn.execute_batch(V3_SQL)
             .map_err(|e| format!("migration v3: {e}"))?;
         conn.execute("INSERT INTO schema_version (version) VALUES (3)", [])
+            .map_err(|e| e.to_string())?;
+    }
+    if current < 4 {
+        conn.execute_batch(V4_SQL)
+            .map_err(|e| format!("migration v4: {e}"))?;
+        conn.execute("INSERT INTO schema_version (version) VALUES (4)", [])
             .map_err(|e| e.to_string())?;
     }
     Ok(())
@@ -217,6 +223,62 @@ CREATE TABLE IF NOT EXISTS measurements (
     notes       TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_meas_kind_ts ON measurements(kind, measured_at);
+"#;
+
+/// 1.3: personal details, food log, care routines, AI history.
+const V4_SQL: &str = r#"
+ALTER TABLE user_profile ADD COLUMN gender TEXT NOT NULL DEFAULT '';
+ALTER TABLE user_profile ADD COLUMN diet TEXT NOT NULL DEFAULT '';
+ALTER TABLE user_profile ADD COLUMN diet_notes TEXT NOT NULL DEFAULT '';
+ALTER TABLE user_profile ADD COLUMN cuisines TEXT NOT NULL DEFAULT '';
+ALTER TABLE user_profile ADD COLUMN health_goal TEXT NOT NULL DEFAULT '';
+ALTER TABLE user_profile ADD COLUMN dress_style TEXT NOT NULL DEFAULT '';
+ALTER TABLE user_profile ADD COLUMN wardrobe_notes TEXT NOT NULL DEFAULT '';
+ALTER TABLE user_profile ADD COLUMN about_me TEXT NOT NULL DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS food_log (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp   TEXT NOT NULL,
+    meal        TEXT NOT NULL DEFAULT 'snack',
+    description TEXT NOT NULL,
+    calories    INTEGER,
+    notes       TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_food_ts ON food_log(timestamp);
+
+CREATE TABLE IF NOT EXISTS care_routines (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    name          TEXT NOT NULL,
+    icon          TEXT NOT NULL DEFAULT '✨',
+    kind          TEXT NOT NULL DEFAULT 'generic',
+    interval_days INTEGER NOT NULL DEFAULT 7,
+    time_of_day   TEXT NOT NULL DEFAULT '',
+    last_done     TEXT,
+    last_reminded TEXT,
+    snoozed_until TEXT,
+    active        INTEGER NOT NULL DEFAULT 1,
+    notes         TEXT NOT NULL DEFAULT '',
+    created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ai_conversations (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    title      TEXT NOT NULL,
+    kind       TEXT NOT NULL DEFAULT 'chat',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ai_messages (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id INTEGER NOT NULL,
+    role            TEXT NOT NULL,
+    content         TEXT NOT NULL,
+    has_image       INTEGER NOT NULL DEFAULT 0,
+    provider        TEXT NOT NULL DEFAULT '',
+    model           TEXT NOT NULL DEFAULT '',
+    created_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ai_msgs ON ai_messages(conversation_id);
 "#;
 
 #[cfg(test)]

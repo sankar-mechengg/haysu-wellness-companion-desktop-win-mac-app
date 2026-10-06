@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api, EVENTS, type AppConfig, type AppStateSnapshot, type UserProfile } from "../lib/api";
 import { useAppStore } from "../store/appStore";
 import { useTauriEvent } from "./useTauriEvent";
@@ -19,6 +20,7 @@ export function useBootstrap() {
   const setResolvedTheme = useAppStore((s) => s.setResolvedTheme);
   const theme = useAppStore((s) => s.config?.theme ?? "light");
   const darkVariant = useAppStore((s) => s.config?.dark_variant ?? "grey");
+  const animations = useAppStore((s) => s.config?.ui_animations ?? true);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +39,14 @@ export function useBootstrap() {
       setSystem(system);
       setHotkeyErrors(hotkeyErrors);
       setReady(true);
+      // Translucent (Mica / vibrancy) windows get a see-through page background.
+      try {
+        const label = getCurrentWindow().label;
+        const active = await api.windowEffectsActive(label);
+        document.documentElement.classList.toggle("vibrancy", active);
+      } catch {
+        /* older backend or unsupported */
+      }
     })().catch((e) => {
       console.error("[Haysu] bootstrap failed:", e);
       setReady(true);
@@ -50,6 +60,10 @@ export function useBootstrap() {
   useTauriEvent<AppStateSnapshot>(EVENTS.tick, setLive);
   useTauriEvent<UserProfile>(EVENTS.profile, setProfile);
   useTauriEvent<string>(EVENTS.activity, () => bumpActivity());
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("no-anim", !animations);
+  }, [animations]);
 
   // Theme → <html class="dark theme-blue">
   useEffect(() => {

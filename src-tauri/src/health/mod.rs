@@ -303,6 +303,52 @@ impl MeasurementInput {
     }
 }
 
+pub const MEALS: &[&str] = &["breakfast", "lunch", "dinner", "snack", "drink"];
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FoodEntry {
+    pub id: i64,
+    /// RFC 3339 UTC.
+    pub timestamp: String,
+    pub meal: String,
+    pub description: String,
+    pub calories: Option<i64>,
+    pub notes: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct FoodInput {
+    pub timestamp: Option<String>,
+    #[serde(default = "default_meal")]
+    pub meal: String,
+    pub description: String,
+    pub calories: Option<i64>,
+    #[serde(default)]
+    pub notes: String,
+}
+
+fn default_meal() -> String {
+    "snack".into()
+}
+
+impl FoodInput {
+    pub fn validate(&mut self) -> Result<(), String> {
+        self.description = self.description.trim().to_string();
+        if self.description.is_empty() {
+            return Err("Describe what you had".into());
+        }
+        if !MEALS.contains(&self.meal.as_str()) {
+            self.meal = "snack".into();
+        }
+        self.calories = self.calories.filter(|c| (0..=10000).contains(c));
+        self.notes = self.notes.trim().to_string();
+        if let Some(ts) = &self.timestamp {
+            DateTime::parse_from_rfc3339(ts).map_err(|_| "Invalid timestamp".to_string())?;
+        }
+        Ok(())
+    }
+}
+
 // ─── Pure scheduling ───────────────────────────────────────────────────────
 
 /// Dose slots a medicine produces on `date`.

@@ -1,3 +1,6 @@
+pub mod ai;
+pub mod backup;
+pub mod care;
 pub mod config;
 pub mod export;
 pub mod health;

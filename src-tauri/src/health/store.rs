@@ -6,7 +6,7 @@ use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use super::{
     AdherenceStats, Condition, ConditionInput, DiaryEntry, DiaryInput, DoseLog, DoseSlot,
-    Measurement, MeasurementInput, Medicine, MedicineInput,
+    FoodEntry, FoodInput, Measurement, MeasurementInput, Medicine, MedicineInput,
 };
 use crate::db::time;
 
@@ -654,6 +654,65 @@ pub fn add_measurement(conn: &Connection, input: &MeasurementInput, unit: &str) 
 
 pub fn delete_measurement(conn: &Connection, id: i64) -> R<()> {
     conn.execute("DELETE FROM measurements WHERE id = ?1", [id])
+        .map_err(e)?;
+    Ok(())
+}
+
+// ─── Food log ──────────────────────────────────────────────────────────────
+
+fn food_from_row(row: &Row) -> rusqlite::Result<FoodEntry> {
+    Ok(FoodEntry {
+        id: row.get(0)?,
+        timestamp: time::to_rfc3339(&row.get::<_, String>(1)?),
+        meal: row.get(2)?,
+        description: row.get(3)?,
+        calories: row.get(4)?,
+        notes: row.get(5)?,
+    })
+}
+
+/// Food entries from the last `days` days, newest first.
+pub fn list_food(conn: &Connection, days: i64) -> R<Vec<FoodEntry>> {
+    let from = time::add_days(&time::today_local(), -(days.clamp(1, 3650) - 1));
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, timestamp, meal, description, calories, notes FROM food_log
+             WHERE date(timestamp,'localtime') >= ?1 ORDER BY timestamp DESC",
+        )
+        .map_err(e)?;
+    let rows = stmt
+        .query_map([from], food_from_row)
+        .map_err(e)?
+        .filter_map(Result::ok)
+        .collect();
+    Ok(rows)
+}
+
+pub fn add_food(conn: &Connection, input: &FoodInput) -> R<FoodEntry> {
+    let ts = match &input.timestamp {
+        Some(t) => DateTime::parse_from_rfc3339(t)
+            .map_err(|_| "Invalid timestamp".to_string())?
+            .with_timezone(&Utc)
+            .format(time::SQLITE_FMT)
+            .to_string(),
+        None => time::now_utc(),
+    };
+    conn.execute(
+        "INSERT INTO food_log (timestamp, meal, description, calories, notes) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![ts, input.meal, input.description, input.calories, input.notes],
+    )
+    .map_err(e)?;
+    let id = conn.last_insert_rowid();
+    conn.query_row(
+        "SELECT id, timestamp, meal, description, calories, notes FROM food_log WHERE id = ?1",
+        [id],
+        food_from_row,
+    )
+    .map_err(e)
+}
+
+pub fn delete_food(conn: &Connection, id: i64) -> R<()> {
+    conn.execute("DELETE FROM food_log WHERE id = ?1", [id])
         .map_err(e)?;
     Ok(())
 }

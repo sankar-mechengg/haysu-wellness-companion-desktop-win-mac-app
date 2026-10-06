@@ -26,6 +26,7 @@ enum Action {
     ToggleDnd,
     ShowDashboard,
     LogWater,
+    OpenAssistant,
 }
 
 fn bindings(cfg: &AppConfig) -> Vec<(&'static str, String, Action)> {
@@ -49,6 +50,11 @@ fn bindings(cfg: &AppConfig) -> Vec<(&'static str, String, Action)> {
             "hotkey_log_water",
             cfg.hotkey_log_water.clone(),
             Action::LogWater,
+        ),
+        (
+            "hotkey_open_assistant",
+            cfg.hotkey_open_assistant.clone(),
+            Action::OpenAssistant,
         ),
     ]
 }
@@ -116,6 +122,12 @@ fn run(app: &AppHandle, action: Action) {
             crate::windows::ensure_window(app, crate::windows::DASHBOARD);
         }
         Action::LogWater => crate::commands::stats::quick_log_water(app),
+        Action::OpenAssistant => {
+            if let Some(win) = crate::windows::ensure_window(app, crate::windows::DASHBOARD) {
+                use tauri::Emitter;
+                let _ = win.emit("open-assistant", ());
+            }
+        }
     }
 }
 

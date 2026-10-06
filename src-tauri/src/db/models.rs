@@ -12,6 +12,22 @@ pub struct UserProfile {
     pub daily_water_ml: i64,
     pub created_at: String,
     pub updated_at: String,
+    #[serde(default)]
+    pub gender: String,
+    #[serde(default)]
+    pub diet: String,
+    #[serde(default)]
+    pub diet_notes: String,
+    #[serde(default)]
+    pub cuisines: String,
+    #[serde(default)]
+    pub health_goal: String,
+    #[serde(default)]
+    pub dress_style: String,
+    #[serde(default)]
+    pub wardrobe_notes: String,
+    #[serde(default)]
+    pub about_me: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

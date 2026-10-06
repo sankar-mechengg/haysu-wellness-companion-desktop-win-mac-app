@@ -149,6 +149,81 @@ textarea,
   -webkit-user-select: text;
 }
 
+/* Translucent windows (Mica / vibrancy): let the OS material show through. */
+html.vibrancy,
+html.vibrancy body {
+  background: transparent !important;
+}
+html.vibrancy .haysu-shell {
+  background-color: color-mix(in srgb, var(--color-bg) 72%, transparent);
+}
+html.vibrancy.dark .haysu-shell {
+  background-color: color-mix(in srgb, var(--color-bg-dark) 70%, transparent);
+}
+html.vibrancy .haysu-card {
+  background-color: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+html.vibrancy.dark .haysu-card {
+  background-color: color-mix(in srgb, var(--color-surface-dark) 78%, transparent);
+}
+
+/* Animations off: everything snaps. */
+html.no-anim *,
+html.no-anim *::before,
+html.no-anim *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Stagger children of a list on mount. */
+.stagger > * {
+  animation: fade-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 160ms;
+}
+.stagger > *:nth-child(6) {
+  animation-delay: 200ms;
+}
+.stagger > *:nth-child(7) {
+  animation-delay: 240ms;
+}
+.stagger > *:nth-child(8) {
+  animation-delay: 280ms;
+}
+.stagger > *:nth-child(n + 9) {
+  animation-delay: 320ms;
+}
+
+/* Soft glow for the active AI status dot. */
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(92, 201, 154, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(92, 201, 154, 0);
+  }
+}
+.glow-dot {
+  animation: glow 2.2s ease-out infinite;
+}
+
 /* Transparent windows (widget, popup): no page background at all. */
 html.transparent,
 html.transparent body {

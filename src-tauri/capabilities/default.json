@@ -33,6 +33,7 @@
     "dialog:allow-ask",
     "notification:default",
     "opener:allow-open-url",
+    "opener:allow-reveal-item-in-dir",
     "updater:default",
     "process:allow-restart",
     "process:allow-exit"

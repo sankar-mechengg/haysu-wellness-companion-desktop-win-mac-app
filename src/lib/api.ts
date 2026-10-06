@@ -2,6 +2,7 @@
  * Typed bridge to the Rust backend. Every command and event name lives here.
  */
 import { invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 
 // ─── Types (mirror src-tauri/src/config.rs, db/models.rs, scheduler/mod.rs, health/mod.rs) ───
 
@@ -11,7 +12,7 @@ export type DarkVariant = "grey" | "blue";
 export type WorkStyle = "sedentary" | "moderate" | "active";
 export type PomodoroPhase = "idle" | "work" | "short_break" | "long_break";
 export type PauseReason = "dnd" | "schedule" | "idle";
-export type ReminderKind = "water" | "movement" | "pomodoro" | "medicine";
+export type ReminderKind = "water" | "movement" | "pomodoro" | "medicine" | "care" | "briefing";
 
 export interface AppConfig {
   water_interval_min: number;
@@ -59,7 +60,36 @@ export interface AppConfig {
   medicine_reminders_enabled: boolean;
   medicine_override_dnd: boolean;
   medicine_missed_after_min: number;
+
+  ai_provider: "auto" | AiProvider;
+  ai_model_anthropic: string;
+  ai_model_openai: string;
+  ai_model_zai: string;
+  ai_model_openrouter: string;
+  ai_share_health: boolean;
+  ai_share_diary: boolean;
+  ai_share_location: boolean;
+  ai_keep_photos: boolean;
+  ai_max_tokens: number;
+  ai_briefing_time: string;
+  ai_last_briefing_date: string;
+
+  location_name: string;
+  location_lat: number | null;
+  location_lon: number | null;
+
+  care_default_time: string;
+
+  auto_backup: boolean;
+  auto_backup_keep: number;
+
+  window_effects: boolean;
+  ui_animations: boolean;
+
+  hotkey_open_assistant: string;
 }
+
+export type AiProvider = "anthropic" | "openai" | "zai" | "openrouter";
 
 export type ConfigPatch = Partial<AppConfig>;
 
@@ -74,18 +104,19 @@ export interface ConfigResult {
   hotkey_errors: HotkeyError[];
 }
 
-export interface UserProfile {
-  id: number;
-  name: string;
-  age: number;
-  weight_kg: number;
-  height_cm: number;
-  occupation: string;
-  work_style: WorkStyle;
-  daily_water_ml: number;
-  created_at: string;
-  updated_at: string;
-}
+export type Diet =
+  "" | "non_vegetarian" | "vegetarian" | "vegan" | "eggetarian" | "pescatarian" | "other";
+export type HealthGoal =
+  | ""
+  | "maintain"
+  | "lose_weight"
+  | "gain_weight"
+  | "build_strength"
+  | "more_energy"
+  | "better_sleep"
+  | "manage_condition";
+export type DressStyle =
+  "" | "casual" | "smart_casual" | "business" | "formal" | "sporty" | "traditional" | "other";
 
 export interface ProfileInput {
   name: string;
@@ -94,6 +125,21 @@ export interface ProfileInput {
   height_cm: number;
   occupation: string;
   work_style: WorkStyle;
+  gender: string;
+  diet: Diet;
+  diet_notes: string;
+  cuisines: string;
+  health_goal: HealthGoal;
+  dress_style: DressStyle;
+  wardrobe_notes: string;
+  about_me: string;
+}
+
+export interface UserProfile extends ProfileInput {
+  id: number;
+  daily_water_ml: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface CountdownSnapshot {
@@ -206,6 +252,7 @@ export interface SystemInfo {
   platform: "windows" | "macos" | "linux" | string;
   log_dir: string | null;
   data_dir: string | null;
+  effects_supported: boolean;
 }
 
 // ─── Health ───
@@ -341,6 +388,194 @@ export interface MeasurementInput {
   notes?: string;
 }
 
+export type Meal = "breakfast" | "lunch" | "dinner" | "snack" | "drink";
+
+export interface FoodEntry {
+  id: number;
+  timestamp: string;
+  meal: Meal;
+  description: string;
+  calories: number | null;
+  notes: string;
+}
+
+export interface FoodInput {
+  timestamp?: string;
+  meal: Meal;
+  description: string;
+  calories?: number | null;
+  notes?: string;
+}
+
+// ─── AI ───
+
+export interface ImageData {
+  media_type: string;
+  base64: string;
+}
+
+export interface ProviderStatus {
+  provider: AiProvider;
+  label: string;
+  has_key: boolean;
+  masked_key: string;
+  model: string;
+  known_models: string[];
+  console_url: string;
+}
+
+export interface AiStatus {
+  providers: ProviderStatus[];
+  active: AiProvider | null;
+  active_model: string | null;
+  selection: string;
+}
+
+export type AiKind =
+  "chat" | "briefing" | "meals" | "outfit" | "posture" | "week" | "grooming" | "doctor";
+
+export interface Conversation {
+  id: number;
+  title: string;
+  kind: AiKind | string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+}
+
+export interface StoredMessage {
+  id: number;
+  conversation_id: number;
+  role: "user" | "assistant" | string;
+  content: string;
+  has_image: boolean;
+  provider: string;
+  model: string;
+  created_at: string;
+}
+
+export interface SendInput {
+  conversation_id?: number | null;
+  message?: string;
+  kind?: AiKind;
+  images?: ImageData[];
+}
+
+export interface SendResult {
+  conversation_id: number;
+  message: StoredMessage;
+}
+
+// ─── Weather ───
+
+export interface GeoLocation {
+  name: string;
+  country: string;
+  admin: string;
+  lat: number;
+  lon: number;
+}
+
+export interface Weather {
+  location_name: string;
+  temp_c: number;
+  feels_like_c: number;
+  temp_min_c: number;
+  temp_max_c: number;
+  humidity: number;
+  wind_kph: number;
+  precipitation_prob: number;
+  uv_index: number;
+  weather_code: number;
+  description: string;
+  icon: string;
+  is_day: boolean;
+  sunrise: string;
+  sunset: string;
+  fetched_at: string;
+}
+
+// ─── Care routines ───
+
+export type CareKind = "generic" | "photo_check" | "diary" | "measurement";
+
+export interface CareRoutine {
+  id: number;
+  name: string;
+  icon: string;
+  kind: CareKind;
+  interval_days: number;
+  time_of_day: string;
+  last_done: string | null;
+  last_reminded: string | null;
+  snoozed_until: string | null;
+  active: boolean;
+  notes: string;
+  created_at: string;
+}
+
+export interface CareRoutineInput {
+  id?: number;
+  name: string;
+  icon: string;
+  kind: CareKind;
+  interval_days: number;
+  time_of_day: string;
+  active: boolean;
+  notes: string;
+  last_done?: string | null;
+}
+
+export interface CarePreset {
+  name: string;
+  icon: string;
+  kind: CareKind;
+  interval_days: number;
+  time_of_day: string;
+  notes: string;
+}
+
+/** JSON carried in `ReminderEvent.data` for care reminders. */
+export interface CareReminderData {
+  id: number;
+  name: string;
+  icon: string;
+  kind: CareKind;
+  notes: string;
+  interval_days: number;
+  last_done: string | null;
+}
+
+// ─── Backup ───
+
+export interface ArchivePreview {
+  format: "haysu-backup" | "haysu-snapshot" | string;
+  app_version: string;
+  created_at: string;
+  exported_by: string;
+  has_profile: boolean;
+  counts: [string, number][];
+}
+
+export interface ImportReport {
+  format: string;
+  created_at: string;
+  exported_by: string;
+  profile: boolean;
+  settings: number;
+  water: number;
+  movement: number;
+  pomodoro: number;
+  medicines: number;
+  doses: number;
+  conditions: number;
+  diary: number;
+  measurements: number;
+  food: number;
+  care_routines: number;
+  skipped: number;
+}
+
 // ─── Event names ───
 
 export const EVENTS = {
@@ -351,7 +586,16 @@ export const EVENTS = {
   profile: "profile-changed",
   activity: "activity-logged",
   health: "health-changed",
+  care: "care-changed",
   checkUpdates: "check-updates",
+  aiDelta: "ai-delta",
+  aiDone: "ai-done",
+  aiError: "ai-error",
+  aiHistory: "ai-history-changed",
+  aiStatus: "ai-status-changed",
+  importFile: "import-file",
+  openAssistant: "open-assistant",
+  openSettingsTab: "open-settings-tab",
 } as const;
 
 // ─── Commands ───
@@ -359,15 +603,7 @@ export const EVENTS = {
 export const api = {
   // Profile
   getUserProfile: () => invoke<UserProfile | null>("get_user_profile"),
-  saveUserProfile: (p: ProfileInput) =>
-    invoke<UserProfile>("save_user_profile", {
-      name: p.name,
-      age: p.age,
-      weightKg: p.weight_kg,
-      heightCm: p.height_cm,
-      occupation: p.occupation,
-      workStyle: p.work_style,
-    }),
+  saveUserProfile: (input: ProfileInput) => invoke<UserProfile>("save_user_profile", { input }),
   hasCompletedOnboarding: () => invoke<boolean>("has_completed_onboarding"),
 
   // Config
@@ -448,6 +684,66 @@ export const api = {
     invoke<Measurement[]>("list_measurements", { kind: kind ?? null, days: days ?? null }),
   addMeasurement: (input: MeasurementInput) => invoke<Measurement>("add_measurement", { input }),
   deleteMeasurement: (id: number) => invoke<void>("delete_measurement", { id }),
+
+  // Health · food
+  listFood: (days?: number) => invoke<FoodEntry[]>("list_food", { days: days ?? null }),
+  addFood: (input: FoodInput) => invoke<FoodEntry>("add_food", { input }),
+  deleteFood: (id: number) => invoke<void>("delete_food", { id }),
+
+  // AI
+  aiStatus: () => invoke<AiStatus>("ai_status"),
+  aiSetKey: (provider: AiProvider, key: string) =>
+    invoke<AiStatus>("ai_set_key", { provider, key }),
+  aiListModels: (provider: AiProvider) => invoke<string[]>("ai_list_models", { provider }),
+  aiTest: (provider: AiProvider) => invoke<string>("ai_test", { provider }),
+  aiConversations: () => invoke<Conversation[]>("ai_conversations"),
+  aiMessages: (conversationId: number) =>
+    invoke<StoredMessage[]>("ai_messages", { conversationId }),
+  aiDeleteConversation: (id: number) => invoke<void>("ai_delete_conversation", { id }),
+  aiRenameConversation: (id: number, title: string) =>
+    invoke<void>("ai_rename_conversation", { id, title }),
+  aiClearHistory: () => invoke<void>("ai_clear_history"),
+  aiSend: (input: SendInput) => invoke<SendResult>("ai_send", { input }),
+  aiSavePhoto: (image: ImageData, label: string) =>
+    invoke<string>("ai_save_photo", { image, label }),
+  aiReadImage: (path: string) => invoke<ImageData>("ai_read_image", { path }),
+
+  // Weather
+  weatherSearch: (query: string) => invoke<GeoLocation[]>("weather_search", { query }),
+  weatherSetLocation: (location: GeoLocation | null) =>
+    invoke<void>("weather_set_location", { location }),
+  weatherNow: () => invoke<Weather | null>("weather_now"),
+
+  // Care routines
+  careList: () => invoke<CareRoutine[]>("care_list"),
+  carePresets: () => invoke<CarePreset[]>("care_presets"),
+  careSave: (input: CareRoutineInput) => invoke<CareRoutine>("care_save", { input }),
+  careAddPreset: (name: string) => invoke<CareRoutine>("care_add_preset", { name }),
+  careDelete: (id: number) => invoke<void>("care_delete", { id }),
+  careDone: (id: number, date?: string) => invoke<void>("care_done", { id, date: date ?? null }),
+  careSnooze: (id: number, days?: number) =>
+    invoke<void>("care_snooze", { id, days: days ?? null }),
+
+  // Backup
+  backupExportHay: (path: string, includeAi = true) =>
+    invoke<string>("backup_export_hay", { path, includeAi }),
+  backupExportSu: (path: string) => invoke<string>("backup_export_su", { path }),
+  backupPreview: (path: string) => invoke<ArchivePreview>("backup_preview", { path }),
+  backupImport: (path: string, replace: boolean) =>
+    invoke<ImportReport>("backup_import", { path, replace }),
+  backupList: () => invoke<[string, number][]>("backup_list"),
+  backupNow: () => invoke<string>("backup_now"),
+  backupHealthReport: () => invoke<string>("backup_health_report"),
+  backupSaveReport: (path: string) => invoke<string>("backup_save_report", { path }),
+  backupTakePendingImport: () => invoke<string | null>("backup_take_pending_import"),
+
+  // Effects
+  /** Show the dashboard and jump to the Haysu AI tab (optionally on a conversation). */
+  openAssistant: async (conversationId?: number | null) => {
+    await invoke<void>("show_window", { label: "dashboard" });
+    await emit(EVENTS.openAssistant, conversationId ?? null);
+  },
+  windowEffectsActive: (label: string) => invoke<boolean>("window_effects_active", { label }),
 };
 
 /** Turn any thrown value into a readable string. */

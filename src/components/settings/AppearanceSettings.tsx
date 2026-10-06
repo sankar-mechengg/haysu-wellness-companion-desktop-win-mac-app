@@ -10,6 +10,8 @@ export default function AppearanceSettings() {
   const config = useConfig();
   const resolved = useAppStore((s) => s.resolvedTheme);
   const patch = useConfigPatch();
+  const effectsSupported = useAppStore((s) => s.system?.effects_supported ?? false);
+  const platform = useAppStore((s) => s.system?.platform ?? "windows");
   if (!config) return null;
 
   return (
@@ -65,6 +67,33 @@ export default function AppearanceSettings() {
               />
             </div>
           </div>
+        </Rows>
+      </Card>
+
+      <Card padding="md">
+        <h4 className="text-sm font-semibold text-text-primary dark:text-text-primary-dark mb-3">
+          Effects
+        </h4>
+        <Rows>
+          <Toggle
+            label="Translucent windows"
+            description={
+              effectsSupported
+                ? platform === "macos"
+                  ? "macOS vibrancy behind the dashboard and settings. Takes effect when the window is next opened."
+                  : "Windows 11 Mica behind the dashboard and settings. Takes effect when the window is next opened."
+                : "Needs Windows 11 or macOS. The desktop shows through the window background."
+            }
+            checked={config.window_effects}
+            onChange={(v) => patch({ window_effects: v })}
+            disabled={!effectsSupported}
+          />
+          <Toggle
+            label="Animations"
+            description="Count-ups, confetti, pops and fades. Off also respects your OS reduced-motion setting."
+            checked={config.ui_animations}
+            onChange={(v) => patch({ ui_animations: v })}
+          />
         </Rows>
       </Card>
 

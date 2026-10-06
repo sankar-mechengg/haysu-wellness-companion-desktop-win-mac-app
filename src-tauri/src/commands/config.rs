@@ -36,7 +36,8 @@ pub fn commit_config(app: &AppHandle, next: AppConfig) -> ConfigResult {
     let hotkeys_changed = old.hotkey_toggle_pomodoro != next.hotkey_toggle_pomodoro
         || old.hotkey_toggle_dnd != next.hotkey_toggle_dnd
         || old.hotkey_show_dashboard != next.hotkey_show_dashboard
-        || old.hotkey_log_water != next.hotkey_log_water;
+        || old.hotkey_log_water != next.hotkey_log_water
+        || old.hotkey_open_assistant != next.hotkey_open_assistant;
     let hotkey_errors = if hotkeys_changed {
         hotkeys::apply(app, &next)
     } else {

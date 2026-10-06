@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useTauriEvent } from "../../hooks/useTauriEvent";
+import { EVENTS } from "../../lib/api";
 import ProfileSettings from "./ProfileSettings";
 import ReminderSettings from "./ReminderSettings";
 import PomodoroSettings from "./PomodoroSettings";
@@ -7,6 +9,9 @@ import AppearanceSettings from "./AppearanceSettings";
 import HotkeySettings from "./HotkeySettings";
 import GeneralSettings from "./GeneralSettings";
 import AboutSettings from "./AboutSettings";
+import AiSettings from "./AiSettings";
+import BackupSettings from "./BackupSettings";
+import { useAiSync } from "../../hooks/useAi";
 import AnimatedH from "../common/AnimatedH";
 import { useAppStore } from "../../store/appStore";
 
@@ -18,6 +23,8 @@ type Tab =
   | "appearance"
   | "hotkeys"
   | "general"
+  | "ai"
+  | "backup"
   | "about";
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -27,6 +34,8 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "schedule", label: "Schedule", icon: "📅" },
   { id: "appearance", label: "Appearance", icon: "🎨" },
   { id: "hotkeys", label: "Hotkeys", icon: "⌨️" },
+  { id: "ai", label: "Haysu AI", icon: "✨" },
+  { id: "backup", label: "Backup", icon: "📦" },
   { id: "general", label: "General", icon: "⚙️" },
   { id: "about", label: "About", icon: "ℹ️" },
 ];
@@ -34,6 +43,14 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 export default function SettingsLayout() {
   const [tab, setTab] = useState<Tab>("profile");
   const hotkeyErrors = useAppStore((s) => s.hotkeyErrors);
+  useAiSync();
+  useTauriEvent<string>(EVENTS.openSettingsTab, (t) => {
+    if (TABS.some((x) => x.id === t)) setTab(t as Tab);
+  });
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t && TABS.some((x) => x.id === t)) setTab(t as Tab);
+  }, []);
 
   const content = {
     profile: <ProfileSettings />,
@@ -43,6 +60,8 @@ export default function SettingsLayout() {
     appearance: <AppearanceSettings />,
     hotkeys: <HotkeySettings />,
     general: <GeneralSettings />,
+    ai: <AiSettings />,
+    backup: <BackupSettings />,
     about: <AboutSettings />,
   }[tab];
 

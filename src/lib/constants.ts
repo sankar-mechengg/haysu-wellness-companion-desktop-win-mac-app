@@ -100,3 +100,86 @@ export const RELEASES_URL =
   "https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app/releases";
 export const REPO_URL =
   "https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app";
+
+// ─── Personal details ───
+export const DIET_OPTIONS: { id: import("./api").Diet; label: string; emoji: string }[] = [
+  { id: "non_vegetarian", label: "Non-vegetarian", emoji: "🍗" },
+  { id: "vegetarian", label: "Vegetarian", emoji: "🥦" },
+  { id: "eggetarian", label: "Eggetarian", emoji: "🥚" },
+  { id: "vegan", label: "Vegan", emoji: "🌱" },
+  { id: "pescatarian", label: "Pescatarian", emoji: "🐟" },
+  { id: "other", label: "Other", emoji: "🍽️" },
+];
+
+export const GOAL_OPTIONS: { id: import("./api").HealthGoal; label: string }[] = [
+  { id: "maintain", label: "Stay healthy" },
+  { id: "lose_weight", label: "Lose weight" },
+  { id: "gain_weight", label: "Gain weight" },
+  { id: "build_strength", label: "Build strength" },
+  { id: "more_energy", label: "More energy" },
+  { id: "better_sleep", label: "Better sleep" },
+  { id: "manage_condition", label: "Manage a condition" },
+];
+
+export const DRESS_OPTIONS: { id: import("./api").DressStyle; label: string; emoji: string }[] = [
+  { id: "casual", label: "Casual", emoji: "👕" },
+  { id: "smart_casual", label: "Smart casual", emoji: "👔" },
+  { id: "business", label: "Business", emoji: "💼" },
+  { id: "formal", label: "Formal", emoji: "🤵" },
+  { id: "sporty", label: "Sporty", emoji: "🏃" },
+  { id: "traditional", label: "Traditional", emoji: "🪷" },
+  { id: "other", label: "Other", emoji: "✨" },
+];
+
+export const MEAL_OPTIONS: { id: import("./api").Meal; label: string; emoji: string }[] = [
+  { id: "breakfast", label: "Breakfast", emoji: "🌅" },
+  { id: "lunch", label: "Lunch", emoji: "🍱" },
+  { id: "dinner", label: "Dinner", emoji: "🍽️" },
+  { id: "snack", label: "Snack", emoji: "🍎" },
+  { id: "drink", label: "Drink", emoji: "🥤" },
+];
+
+export const AI_QUICK_ACTIONS: {
+  kind: import("./api").AiKind;
+  label: string;
+  icon: string;
+  hint: string;
+}[] = [
+  {
+    kind: "briefing",
+    label: "Daily briefing",
+    icon: "☀️",
+    hint: "Weather, doses, food and focus for today",
+  },
+  {
+    kind: "meals",
+    label: "Plan my meals",
+    icon: "🥗",
+    hint: "Fits your diet, goal and what you ate",
+  },
+  {
+    kind: "outfit",
+    label: "What to wear",
+    icon: "👕",
+    hint: "From today's weather and your style",
+  },
+  {
+    kind: "posture",
+    label: "Posture check",
+    icon: "📷",
+    hint: "A photo for posture and grooming tips",
+  },
+  { kind: "week", label: "Review my week", icon: "📈", hint: "Patterns across all your records" },
+  {
+    kind: "grooming",
+    label: "Grooming routine",
+    icon: "🪥",
+    hint: "A simple weekly self-care plan",
+  },
+  {
+    kind: "doctor",
+    label: "Summary for my doctor",
+    icon: "🩺",
+    hint: "Neutral, dated, ready to share",
+  },
+];

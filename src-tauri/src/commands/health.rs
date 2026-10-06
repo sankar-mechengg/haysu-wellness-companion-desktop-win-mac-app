@@ -7,7 +7,8 @@ use crate::config::ConfigState;
 use crate::db::{time, DbState};
 use crate::health::{
     self, store, AdherenceStats, Condition, ConditionInput, DiaryEntry, DiaryInput, DoseLog,
-    DoseSlot, Measurement, MeasurementInput, Medicine, MedicineInput, MEASUREMENT_KINDS,
+    DoseSlot, FoodEntry, FoodInput, Measurement, MeasurementInput, Medicine, MedicineInput,
+    MEASUREMENT_KINDS,
 };
 use crate::scheduler;
 
@@ -230,6 +231,29 @@ pub fn add_measurement(app: AppHandle, mut input: MeasurementInput) -> Result<Me
 pub fn delete_measurement(app: AppHandle, id: i64) -> Result<(), String> {
     with_conn(&app, |c| store::delete_measurement(c, id))?;
     notify(&app, "measurements");
+    Ok(())
+}
+
+// ─── Food ──────────────────────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn list_food(app: AppHandle, days: Option<i64>) -> Result<Vec<FoodEntry>, String> {
+    with_conn(&app, |c| store::list_food(c, days.unwrap_or(7)))
+}
+
+#[tauri::command]
+pub fn add_food(app: AppHandle, mut input: FoodInput) -> Result<FoodEntry, String> {
+    input.validate()?;
+    let f = with_conn(&app, |c| store::add_food(c, &input))?;
+    notify(&app, "food");
+    let _ = app.emit(crate::commands::stats::EV_ACTIVITY, "food");
+    Ok(f)
+}
+
+#[tauri::command]
+pub fn delete_food(app: AppHandle, id: i64) -> Result<(), String> {
+    with_conn(&app, |c| store::delete_food(c, id))?;
+    notify(&app, "food");
     Ok(())
 }
 

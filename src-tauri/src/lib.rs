@@ -1,6 +1,9 @@
 //! Haysu — desktop wellness companion.
 
+pub mod ai;
 pub mod autostart;
+pub mod backup;
+pub mod care;
 pub mod commands;
 pub mod config;
 pub mod db;
@@ -10,6 +13,7 @@ pub mod notify;
 pub mod scheduler;
 pub mod tray;
 pub mod utils;
+pub mod weather;
 pub mod windows;
 
 use std::sync::{Arc, Mutex};
@@ -47,7 +51,14 @@ pub fn run() {
                 .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
                 .build(),
         )
-        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if let Some(p) = argv.iter().skip(1).find(|a| {
+                let l = a.to_lowercase();
+                l.ends_with(".hay") || l.ends_with(".su")
+            }) {
+                commands::backup::queue_import(app, std::path::PathBuf::from(p));
+                return;
+            }
             let cfg = app.state::<ConfigState>().get();
             if cfg.onboarding_complete {
                 windows::show_widget(app);
@@ -87,6 +98,14 @@ pub fn run() {
             app.manage(db);
             app.manage(config);
             app.manage(HotkeyStatus(Mutex::new(Vec::new())));
+            app.manage(ai::KeyStore::load(
+                &app.state::<DbState>().conn.lock().expect("db lock"),
+            ));
+            app.manage(weather::WeatherCache::default());
+            app.manage(windows::EffectsState(Mutex::new(
+                std::collections::HashSet::new(),
+            )));
+            app.manage(commands::backup::PendingImport(Mutex::new(None)));
             app.manage(Arc::new(Mutex::new(SchedulerState::new(&cfg, work_style))));
 
             #[cfg(target_os = "macos")]
@@ -101,7 +120,42 @@ pub fn run() {
             }
 
             scheduler::reload_medicines(&handle);
+            scheduler::reload_care(&handle);
             scheduler::start(handle.clone());
+
+            // Daily automatic backup (off the main thread).
+            if cfg.auto_backup {
+                let h = handle.clone();
+                let keep = cfg.auto_backup_keep as usize;
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+                    if let Ok(dir) = h.path().app_data_dir() {
+                        let res = h
+                            .state::<DbState>()
+                            .conn
+                            .lock()
+                            .map_err(|e| e.to_string())
+                            .and_then(|c| backup::auto_backup(&c, &dir, keep));
+                        match res {
+                            Ok(Some(p)) => log::info!("auto backup written: {}", p.display()),
+                            Ok(None) => {}
+                            Err(e) => log::warn!("auto backup failed: {e}"),
+                        }
+                    }
+                });
+            }
+
+            // A .hay/.su passed on the command line (Windows / Linux file association).
+            if let Some(p) = std::env::args().skip(1).find(|a| {
+                let l = a.to_lowercase();
+                l.ends_with(".hay") || l.ends_with(".su")
+            }) {
+                let h = handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+                    commands::backup::queue_import(&h, std::path::PathBuf::from(p));
+                });
+            }
 
             if cfg.onboarding_complete {
                 if cfg.widget_visible {
@@ -173,7 +227,62 @@ pub fn run() {
             commands::health::add_measurement,
             commands::health::delete_measurement,
             commands::health::measurement_kinds,
+            commands::health::list_food,
+            commands::health::add_food,
+            commands::health::delete_food,
+            // AI
+            commands::ai::ai_status,
+            commands::ai::ai_set_key,
+            commands::ai::ai_list_models,
+            commands::ai::ai_test,
+            commands::ai::ai_conversations,
+            commands::ai::ai_messages,
+            commands::ai::ai_delete_conversation,
+            commands::ai::ai_rename_conversation,
+            commands::ai::ai_clear_history,
+            commands::ai::ai_send,
+            commands::ai::ai_save_photo,
+            commands::ai::ai_read_image,
+            // Weather
+            weather::weather_search,
+            weather::weather_set_location,
+            weather::weather_now,
+            // Care
+            commands::care::care_list,
+            commands::care::care_presets,
+            commands::care::care_save,
+            commands::care::care_add_preset,
+            commands::care::care_delete,
+            commands::care::care_done,
+            commands::care::care_snooze,
+            // Backup
+            commands::backup::backup_export_hay,
+            commands::backup::backup_export_su,
+            commands::backup::backup_preview,
+            commands::backup::backup_import,
+            commands::backup::backup_list,
+            commands::backup::backup_now,
+            commands::backup::backup_health_report,
+            commands::backup::backup_save_report,
+            commands::backup::backup_take_pending_import,
+            // Effects
+            commands::system::window_effects_active,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Haysu");
+        .build(tauri::generate_context!())
+        .expect("error while building Haysu")
+        .run(|app, event| {
+            // macOS hands opened files through this event.
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = &event {
+                for url in urls {
+                    if let Ok(p) = url.to_file_path() {
+                        commands::backup::queue_import(app, p);
+                    }
+                }
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = (app, event);
+            }
+        });
 }

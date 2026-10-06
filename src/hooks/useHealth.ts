@@ -7,6 +7,7 @@ import {
   type Condition,
   type DiaryEntry,
   type DoseSlot,
+  type FoodEntry,
   type Measurement,
   type MeasurementKind,
   type Medicine,
@@ -89,6 +90,10 @@ export function useDiary(from: string, to: string) {
 
 export function useMeasurements(kind: MeasurementKind | undefined, days: number) {
   return useLoader<Measurement[]>(() => api.listMeasurements(kind, days), [], [kind, days]);
+}
+
+export function useFood(days: number) {
+  return useLoader<FoodEntry[]>(() => api.listFood(days), [], [days]);
 }
 
 export function useSymptomSuggestions() {

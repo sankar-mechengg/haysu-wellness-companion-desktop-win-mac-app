@@ -30,6 +30,12 @@ const HOTKEYS: { field: keyof AppConfig; label: string; description: string; ico
     description: "Logs your default amount instantly",
     icon: "💧",
   },
+  {
+    field: "hotkey_open_assistant",
+    label: "Ask Haysu AI",
+    description: "Opens the dashboard on the Haysu AI tab",
+    icon: "✨",
+  },
 ];
 
 const DEFAULTS: Partial<AppConfig> = {
@@ -37,6 +43,7 @@ const DEFAULTS: Partial<AppConfig> = {
   hotkey_toggle_dnd: "CmdOrCtrl+Shift+K",
   hotkey_show_dashboard: "CmdOrCtrl+Shift+H",
   hotkey_log_water: "",
+  hotkey_open_assistant: "CmdOrCtrl+Shift+A",
 };
 
 export default function HotkeySettings() {

@@ -2,11 +2,20 @@ import { useCallback, useState } from "react";
 import StepWelcome from "./StepWelcome";
 import StepProfile from "./StepProfile";
 import StepWorkStyle from "./StepWorkStyle";
+import StepLifestyle from "./StepLifestyle";
 import StepIntervals from "./StepIntervals";
 import StepTheme from "./StepTheme";
 import StepFinish from "./StepFinish";
 import AnimatedH from "../common/AnimatedH";
-import { api, errorMessage, type Theme, type WorkStyle } from "../../lib/api";
+import {
+  api,
+  errorMessage,
+  type Diet,
+  type DressStyle,
+  type HealthGoal,
+  type Theme,
+  type WorkStyle,
+} from "../../lib/api";
 import { ADAPTIVE_INTERVALS } from "../../lib/constants";
 import { useAppStore } from "../../store/appStore";
 
@@ -17,6 +26,10 @@ export interface OnboardingData {
   height_cm: number;
   occupation: string;
   work_style: WorkStyle;
+  diet: Diet;
+  diet_notes: string;
+  health_goal: HealthGoal;
+  dress_style: DressStyle;
   water_interval: number;
   movement_interval: number;
   theme: Theme;
@@ -31,7 +44,7 @@ export interface StepProps {
   back: () => void;
 }
 
-const STEPS = 6;
+const STEPS = 7;
 
 export default function OnboardingWizard() {
   const setConfig = useAppStore((s) => s.setConfig);
@@ -45,6 +58,10 @@ export default function OnboardingWizard() {
     height_cm: 170,
     occupation: "",
     work_style: "sedentary",
+    diet: "non_vegetarian",
+    diet_notes: "",
+    health_goal: "maintain",
+    dress_style: "casual",
     water_interval: ADAPTIVE_INTERVALS.sedentary.water,
     movement_interval: ADAPTIVE_INTERVALS.sedentary.movement,
     theme: "system",
@@ -78,6 +95,14 @@ export default function OnboardingWizard() {
         height_cm: data.height_cm,
         occupation: data.occupation,
         work_style: data.work_style,
+        gender: "",
+        diet: data.diet,
+        diet_notes: data.diet_notes.trim(),
+        cuisines: "",
+        health_goal: data.health_goal,
+        dress_style: data.dress_style,
+        wardrobe_notes: "",
+        about_me: "",
       });
       const result = await api.updateConfig({
         water_interval_min: data.water_interval,
@@ -99,6 +124,7 @@ export default function OnboardingWizard() {
     <StepWelcome key="w" {...props} />,
     <StepProfile key="p" {...props} />,
     <StepWorkStyle key="s" {...props} />,
+    <StepLifestyle key="l" {...props} />,
     <StepIntervals key="i" {...props} />,
     <StepTheme key="t" {...props} />,
     <StepFinish key="f" {...props} finish={finish} saving={saving} />,

@@ -1,16 +1,20 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import TodayView from "./TodayView";
 import WeekView from "./WeekView";
 import HealthView from "./health/HealthView";
+import AssistantView from "./assistant/AssistantView";
 import ExportButton from "./ExportButton";
 import UpdateBanner from "./UpdateBanner";
 import AnimatedH from "../common/AnimatedH";
 import Segmented from "../common/Segmented";
-import { api } from "../../lib/api";
+import { ImportDialog } from "../settings/BackupSettings";
+import { api, EVENTS, type AiKind } from "../../lib/api";
 import { useHealthSync } from "../../hooks/useHealth";
+import { useTauriEvent } from "../../hooks/useTauriEvent";
+import { useAiStore } from "../../hooks/useAi";
 import { useLive, useProfile } from "../../store/appStore";
 
-type Tab = "today" | "week" | "health";
+export type DashboardTab = "today" | "week" | "health" | "ai";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -22,15 +26,42 @@ function greeting(): string {
 }
 
 export default function DashboardLayout() {
-  const [tab, setTab] = useState<Tab>("today");
+  const [tab, setTab] = useState<DashboardTab>("today");
+  const [aiConversation, setAiConversation] = useState<number | null>(null);
+  const [aiKick, setAiKick] = useState<{ kind: AiKind; n: number } | null>(null);
+  const [importPath, setImportPath] = useState<string | null>(null);
   const profile = useProfile();
   const live = useLive();
+  const aiReady = useAiStore((s) => !!s.status?.active);
   useHealthSync();
 
   const pending = live?.doses_pending ?? 0;
 
+  // Jump to the assistant (hotkey, popup "Read briefing", widget "Ask").
+  useTauriEvent<number | null>(EVENTS.openAssistant, (id) => {
+    setAiConversation(typeof id === "number" ? id : null);
+    setTab("ai");
+  });
+
+  // A .hay/.su file was opened (double-click / drag onto the exe).
+  const takePending = useCallback(() => {
+    api
+      .backupTakePendingImport()
+      .then((p) => p && setImportPath(p))
+      .catch(() => {});
+  }, []);
+  useEffect(takePending, [takePending]);
+  useTauriEvent<string>(EVENTS.importFile, (p) => setImportPath(p));
+
+  /** Open the AI tab and fire a quick action immediately. */
+  const askAi = useCallback((kind: AiKind) => {
+    setAiConversation(null);
+    setAiKick((k) => ({ kind, n: (k?.n ?? 0) + 1 }));
+    setTab("ai");
+  }, []);
+
   return (
-    <div className="h-screen w-screen bg-bg dark:bg-bg-dark flex flex-col">
+    <div className="haysu-shell h-screen w-screen bg-bg dark:bg-bg-dark flex flex-col">
       <header className="px-6 pt-5 pb-3">
         <div className="flex items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-3 min-w-0">
@@ -57,7 +88,7 @@ export default function DashboardLayout() {
           </div>
         </div>
         <UpdateBanner />
-        <Segmented
+        <Segmented<DashboardTab>
           value={tab}
           onChange={setTab}
           fullWidth
@@ -70,13 +101,19 @@ export default function DashboardLayout() {
               label: pending > 0 ? `Health (${pending} due)` : "Health",
               icon: "💊",
             },
+            { value: "ai", label: aiReady ? "Haysu AI" : "Haysu AI (set up)", icon: "✨" },
           ]}
         />
       </header>
 
       <main className="flex-1 overflow-y-auto px-6 pb-6">
-        {tab === "today" ? <TodayView /> : tab === "week" ? <WeekView /> : <HealthView />}
+        {tab === "today" && <TodayView onAsk={askAi} />}
+        {tab === "week" && <WeekView />}
+        {tab === "health" && <HealthView onAsk={askAi} />}
+        {tab === "ai" && <AssistantView initialConversation={aiConversation} kick={aiKick} />}
       </main>
+
+      {importPath && <ImportDialog path={importPath} onClose={() => setImportPath(null)} />}
     </div>
   );
 }

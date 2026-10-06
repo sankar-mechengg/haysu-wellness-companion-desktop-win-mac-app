@@ -4,6 +4,51 @@ All notable changes to Haysu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-10-07
+
+### Added
+
+- **Haysu AI.** A personal wellness companion that answers from your own
+  records. Bring your own key for Anthropic (Claude), OpenAI (GPT), Z.AI (GLM)
+  or OpenRouter; *Auto* uses the first key you add, or pin a provider. Pick a
+  model from the list, fetch the provider's latest list, or type any model id.
+  Streaming replies, Markdown, conversation history, and a global hotkey
+  (Ctrl/⌘+Shift+A). Quick actions: daily briefing, plan my meals, what to
+  wear, posture check (camera or file photo), review my week, grooming
+  routine and a neutral summary for your doctor. Privacy switches control
+  whether health records, diary entries and location are shared; keys live
+  only in the local database and are never exported.
+- **Daily briefing** at a time you choose, delivered as a popup.
+- **Richer profile**: gender (optional), diet (vegetarian, non-vegetarian,
+  eggetarian, vegan, pescatarian, other) with allergies and cuisines, main
+  goal, dress style with wardrobe notes, free-form "about me", and a city for
+  weather. BMI is shown from height and weight. The onboarding wizard gained
+  a lifestyle step.
+- **Food log** under Health, with optional calories and a one-click meal plan
+  from Haysu AI that respects your diet, goal and what you already ate.
+- **Personal care routines** under Health → Care: presets (daily check-in,
+  posture photo, weigh-in, skincare, haircut, dentist, …) or custom ones,
+  every N days at an optional time. They remind you even during Do Not
+  Disturb, with Done / Open / Tomorrow.
+- **Weather** on the Today tab (Open-Meteo, no key needed) with an outfit
+  shortcut.
+- **Backup and export.** `.hay` holds everything (profile, settings, logs,
+  medicines, diary, routines, AI chats; never API keys). `.su` is a
+  health-only snapshot for a clinician or another device. Import merges by
+  default or replaces everything; double-clicking a `.hay`/`.su` file opens
+  the import dialog. Automatic daily backups with a configurable retention,
+  plus a Markdown health report for your doctor.
+- **Translucency** (Windows 11 Mica, macOS vibrancy) for the dashboard and
+  settings, and an **animations** switch: count-ups, staggered cards and a
+  confetti burst when you hit the water goal.
+- The widget has an **Ask** button; Health shows a Haysu AI strip on Today.
+
+### Changed
+
+- Database schema version 4 (additive).
+- Clear history now also clears food and AI chats; profile, medicines, diary
+  and routines are kept.
+
 ## [1.2.0] - 2026-10-07
 
 ### Added

@@ -333,6 +333,10 @@ pub fn compute_streaks(
 #[tauri::command]
 pub fn get_streaks(db: State<'_, DbState>) -> Result<Streaks, String> {
     let conn = db.conn.lock().map_err(|e| e.to_string())?;
+    streaks_for_conn(&conn)
+}
+
+pub fn streaks_for_conn(conn: &Connection) -> Result<Streaks, String> {
     let mut active = HashSet::new();
     let mut stmt = conn
         .prepare(
@@ -343,6 +347,7 @@ pub fn get_streaks(db: State<'_, DbState>) -> Result<Streaks, String> {
                        WHERE completed = 1 AND session_type = 'work'
                 UNION SELECT date(timestamp,'localtime') FROM diary_entries
                 UNION SELECT substr(scheduled_at,1,10) FROM dose_log WHERE status = 'taken'
+                UNION SELECT date(timestamp,'localtime') FROM food_log
              ) WHERE d IS NOT NULL",
         )
         .map_err(|e| e.to_string())?;

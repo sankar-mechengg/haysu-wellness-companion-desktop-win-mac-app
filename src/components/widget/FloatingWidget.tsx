@@ -272,6 +272,14 @@ export default function FloatingWidget() {
               </button>
               <button
                 type="button"
+                onClick={() => api.openAssistant()}
+                className="flex-1 h-7 rounded-lg text-[11px] font-medium bg-haysu-500/15 text-haysu-500 hover:bg-haysu-500/25"
+                title="Ask Haysu AI"
+              >
+                ✨ Ask
+              </button>
+              <button
+                type="button"
                 onClick={() => api.showWindow("settings")}
                 className="flex-1 h-7 rounded-lg text-[11px] font-medium bg-surface-hover dark:bg-surface-hover-dark text-text-secondary dark:text-text-secondary-dark hover:text-text-primary dark:hover:text-text-primary-dark"
               >

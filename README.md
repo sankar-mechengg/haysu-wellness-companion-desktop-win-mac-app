@@ -1,7 +1,8 @@
 # Haysu
 
-**Your desktop wellness companion.** Water reminders, guided movement breaks and a
-Pomodoro timer that live quietly in your system tray.
+**Your desktop wellness companion.** Water reminders, movement breaks, a Pomodoro
+timer, medicines, a health diary, personal-care routines and an AI companion that
+knows your records, all living quietly in your system tray.
 
 [![CI](https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app/actions/workflows/ci.yml/badge.svg)](https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app?display_name=tag)](https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app/releases/latest)
@@ -23,6 +24,15 @@ Grab the latest build from the
 Builds are not code-signed yet. Windows SmartScreen shows *More info → Run anyway*;
 on macOS use **System Settings → Privacy & Security → Open Anyway** after the first
 launch attempt. Once installed, Haysu updates itself from GitHub releases.
+
+## Screenshots
+
+![Haysu dashboard, widget and a care reminder](docs/screenshots/linkedin-01-hero.png)
+
+![Haysu AI](docs/screenshots/linkedin-02-ai.png)
+
+More in [`docs/screenshots`](docs/screenshots): every dashboard and settings tab in
+light and dark, the widget, and reminder popups.
 
 ## Features
 
@@ -46,9 +56,20 @@ launch attempt. Once installed, Haysu updates itself from GitHub releases.
 - **Health diary** for mood, energy, pain, sleep, symptoms and notes, tied to the
   conditions you're managing, plus vitals (weight, blood pressure, heart rate,
   temperature, glucose, SpO₂) with trend charts.
-- **Light, dark (grey or blue) and system theme.** Launch at login. In-app updater.
+- **Haysu AI**: bring your own Anthropic, OpenAI, Z.AI or OpenRouter key and ask
+  anything about your week, food, sleep or symptoms. Quick actions for a daily
+  briefing, meal plans that fit your diet, what to wear from today's weather, a
+  posture / grooming photo check, a weekly review and a summary for your doctor.
+- **Food log** and **personal-care routines** (skincare, haircut, dentist, weigh-in,
+  posture photo, …) with their own reminders.
+- **Backup**: `.hay` full backups and `.su` health snapshots, automatic daily
+  backups, merge or replace on import, and a Markdown health report.
+- **Light, dark (grey or blue) and system theme**, Windows 11 Mica / macOS vibrancy,
+  animations you can switch off. Launch at login. In-app updater.
 
-Everything is stored locally in a SQLite file. Nothing is sent anywhere.
+Everything is stored locally in a SQLite file. The only network calls are GitHub
+(updates), Open-Meteo (weather, if you set a city) and the AI provider you chose,
+and only when you ask Haysu AI something.
 
 ## Development
 

@@ -107,6 +107,40 @@ pub struct AppConfig {
     pub medicine_override_dnd: bool,
     /// Minutes after the slot before an unanswered dose counts as missed.
     pub medicine_missed_after_min: u32,
+
+    // Haysu AI
+    /// "auto" | "anthropic" | "openai" | "zai" | "openrouter"
+    pub ai_provider: String,
+    pub ai_model_anthropic: String,
+    pub ai_model_openai: String,
+    pub ai_model_zai: String,
+    pub ai_model_openrouter: String,
+    pub ai_share_health: bool,
+    pub ai_share_diary: bool,
+    pub ai_share_location: bool,
+    pub ai_keep_photos: bool,
+    pub ai_max_tokens: u32,
+    /// `HH:MM` to generate a daily briefing automatically; empty = off.
+    pub ai_briefing_time: String,
+    pub ai_last_briefing_date: String,
+
+    // Location (for weather and outfit advice)
+    pub location_name: String,
+    pub location_lat: Option<f64>,
+    pub location_lon: Option<f64>,
+
+    // Care routines
+    pub care_default_time: String,
+
+    // Backups
+    pub auto_backup: bool,
+    pub auto_backup_keep: u32,
+
+    // Look & feel
+    pub window_effects: bool,
+    pub ui_animations: bool,
+
+    pub hotkey_open_assistant: String,
 }
 
 impl Default for AppConfig {
@@ -157,6 +191,33 @@ impl Default for AppConfig {
             medicine_reminders_enabled: true,
             medicine_override_dnd: true,
             medicine_missed_after_min: 120,
+
+            ai_provider: "auto".into(),
+            ai_model_anthropic: String::new(),
+            ai_model_openai: String::new(),
+            ai_model_zai: String::new(),
+            ai_model_openrouter: String::new(),
+            ai_share_health: true,
+            ai_share_diary: true,
+            ai_share_location: true,
+            ai_keep_photos: false,
+            ai_max_tokens: 1400,
+            ai_briefing_time: String::new(),
+            ai_last_briefing_date: String::new(),
+
+            location_name: String::new(),
+            location_lat: None,
+            location_lon: None,
+
+            care_default_time: "10:00".into(),
+
+            auto_backup: true,
+            auto_backup_keep: 7,
+
+            window_effects: true,
+            ui_animations: true,
+
+            hotkey_open_assistant: "CmdOrCtrl+Shift+A".into(),
         }
     }
 }
@@ -175,6 +236,20 @@ impl AppConfig {
         self.pomodoro_sessions_before_long = self.pomodoro_sessions_before_long.clamp(1, 12);
         self.idle_threshold_min = self.idle_threshold_min.clamp(1, 120);
         self.medicine_missed_after_min = self.medicine_missed_after_min.clamp(15, 720);
+        self.ai_max_tokens = self.ai_max_tokens.clamp(256, 8000);
+        self.auto_backup_keep = self.auto_backup_keep.clamp(1, 60);
+        if !["auto", "anthropic", "openai", "zai", "openrouter"]
+            .contains(&self.ai_provider.as_str())
+        {
+            self.ai_provider = "auto".into();
+        }
+        if !self.ai_briefing_time.is_empty() && !is_hhmm(&self.ai_briefing_time) {
+            self.ai_briefing_time.clear();
+        }
+        if !is_hhmm(&self.care_default_time) {
+            self.care_default_time = "10:00".into();
+        }
+        self.hotkey_open_assistant = self.hotkey_open_assistant.trim().to_string();
         if !is_hhmm(&self.schedule_start) {
             self.schedule_start = "09:00".into();
         }

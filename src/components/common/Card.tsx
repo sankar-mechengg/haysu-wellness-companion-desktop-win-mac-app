@@ -32,7 +32,7 @@ export default function Card({
 }: CardProps) {
   return (
     <div
-      className={`
+      className={`haysu-card 
         rounded-2xl transition-all duration-200
         ${variantClasses[variant]}
         ${paddingClasses[padding]}

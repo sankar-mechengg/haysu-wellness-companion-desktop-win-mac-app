@@ -6,6 +6,9 @@ use tauri::{
     WebviewWindowBuilder, Window, WindowEvent,
 };
 
+use std::collections::HashSet;
+use std::sync::Mutex;
+
 use crate::config::{AppConfig, ConfigState, DarkVariant, Theme};
 use crate::scheduler::Scheduler;
 
@@ -14,6 +17,96 @@ pub const POPUP: &str = "popup";
 pub const DASHBOARD: &str = "dashboard";
 pub const SETTINGS: &str = "settings";
 pub const ONBOARDING: &str = "onboarding";
+
+/// Labels of windows that currently have a native translucency effect.
+pub struct EffectsState(pub Mutex<HashSet<String>>);
+
+/// Whether this OS can do Mica / vibrancy at all.
+pub fn effects_supported() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        // Mica needs Windows 11 (build 22000+).
+        windows_build() >= 22000
+    }
+    #[cfg(target_os = "macos")]
+    {
+        true
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        false
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn windows_build() -> u32 {
+    use std::sync::OnceLock;
+    static BUILD: OnceLock<u32> = OnceLock::new();
+    *BUILD.get_or_init(|| {
+        // RtlGetVersion is not affected by compatibility shims. Read it via the
+        // registry-free `ver` command to avoid extra crates; 0 on failure.
+        std::process::Command::new("cmd")
+            .args(["/C", "ver"])
+            .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+            .output()
+            .ok()
+            .and_then(|o| {
+                let s = String::from_utf8_lossy(&o.stdout);
+                s.split('.')
+                    .nth(2)
+                    .and_then(|b| b.trim_matches(|c: char| !c.is_ascii_digit()).parse().ok())
+            })
+            .unwrap_or(0)
+    })
+}
+
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+/// Apply Mica (Windows 11) or vibrancy (macOS) to a window; returns whether it took.
+pub fn apply_effects(app: &AppHandle, win: &WebviewWindow, cfg: &AppConfig) -> bool {
+    let label = win.label().to_string();
+    #[allow(unused_mut)]
+    let mut ok = false;
+    if cfg.window_effects && effects_supported() {
+        #[cfg(target_os = "windows")]
+        {
+            let dark = match cfg.theme {
+                Theme::Dark => Some(true),
+                Theme::Light => Some(false),
+                Theme::System => None,
+            };
+            ok = window_vibrancy::apply_mica(win, dark).is_ok();
+        }
+        #[cfg(target_os = "macos")]
+        {
+            use window_vibrancy::{NSVisualEffectMaterial, NSVisualEffectState};
+            ok = window_vibrancy::apply_vibrancy(
+                win,
+                NSVisualEffectMaterial::Sidebar,
+                Some(NSVisualEffectState::Active),
+                Some(12.0),
+            )
+            .is_ok();
+        }
+    }
+    if let Ok(mut set) = app.state::<EffectsState>().0.lock() {
+        if ok {
+            set.insert(label);
+        } else {
+            set.remove(&label);
+        }
+    }
+    ok
+}
+
+pub fn has_effects(app: &AppHandle, label: &str) -> bool {
+    app.state::<EffectsState>()
+        .0
+        .lock()
+        .map(|s| s.contains(label))
+        .unwrap_or(false)
+}
 
 /// Windows that are created from `tauri.conf.json` and must never be destroyed.
 const PERSISTENT: &[&str] = &[WIDGET, POPUP];
@@ -53,7 +146,15 @@ pub fn ensure_window(app: &AppHandle, label: &str) -> Option<WebviewWindow> {
     };
 
     let cfg = app.state::<ConfigState>().get();
+    let translucent = cfg.window_effects && effects_supported();
+    let builder = if translucent {
+        builder.transparent(true)
+    } else {
+        builder
+    };
     let builder = match cfg.theme {
+        Theme::Dark if translucent => builder.theme(Some(tauri::Theme::Dark)),
+        Theme::Light if translucent => builder.theme(Some(tauri::Theme::Light)),
         Theme::Dark => {
             builder
                 .theme(Some(tauri::Theme::Dark))
@@ -70,6 +171,7 @@ pub fn ensure_window(app: &AppHandle, label: &str) -> Option<WebviewWindow> {
 
     match builder.visible(true).build() {
         Ok(win) => {
+            apply_effects(app, &win, &cfg);
             let _ = win.set_focus();
             Some(win)
         }

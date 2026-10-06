@@ -10,6 +10,7 @@
  * commands to tag the release.
  */
 import { readFileSync, writeFileSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -74,6 +75,16 @@ try {
   writeFileSync(lockRsPath, lockRs);
 } catch {
   // no lockfile, fine
+}
+
+// Keep the JSON manifests in Prettier's style so CI's format check stays green.
+try {
+  execSync("npx prettier --write package.json package-lock.json src-tauri/tauri.conf.json", {
+    cwd: root,
+    stdio: "ignore",
+  });
+} catch {
+  console.warn("prettier not available; run `npm run format` before committing");
 }
 
 console.log(`${current} → ${version}`);

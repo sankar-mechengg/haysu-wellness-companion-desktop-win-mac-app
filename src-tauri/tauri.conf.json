@@ -80,18 +80,14 @@
     },
     "fileAssociations": [
       {
-        "ext": [
-          "hay"
-        ],
+        "ext": ["hay"],
         "name": "Haysu backup",
         "description": "Haysu backup archive",
         "role": "Editor",
         "mimeType": "application/x-haysu-backup"
       },
       {
-        "ext": [
-          "su"
-        ],
+        "ext": ["su"],
         "name": "Haysu snapshot",
         "description": "Haysu health snapshot",
         "role": "Editor",

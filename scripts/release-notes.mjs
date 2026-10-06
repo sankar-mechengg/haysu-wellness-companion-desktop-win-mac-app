@@ -16,7 +16,10 @@ const repo = "sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app";
 let section = "";
 try {
   const changelog = readFileSync(resolve(root, "CHANGELOG.md"), "utf8");
-  const re = new RegExp(`^## \\[?${version.replace(/\./g, "\\.")}\\]?[^\\n]*\\n([\\s\\S]*?)(?=^## |\\s*$)`, "m");
+  const re = new RegExp(
+    `^## \\[?${version.replace(/\./g, "\\.")}\\]?[^\\n]*\\n([\\s\\S]*?)(?=^## |\\s*$)`,
+    "m"
+  );
   const m = changelog.match(re);
   if (m) section = m[1].trim();
 } catch {
@@ -44,4 +47,6 @@ Existing installs of 1.1.0 or later update themselves: the widget shows an **Upd
 \`latest.json\` and the \`.sig\` files are used by the in-app updater; you do not need to download them.
 `;
 
-process.stdout.write(`${section || `Haysu ${version}.`}\n${guide}\n[Full changelog](https://github.com/${repo}/blob/master/CHANGELOG.md)\n`);
+process.stdout.write(
+  `${section || `Haysu ${version}.`}\n${guide}\n[Full changelog](https://github.com/${repo}/blob/master/CHANGELOG.md)\n`
+);

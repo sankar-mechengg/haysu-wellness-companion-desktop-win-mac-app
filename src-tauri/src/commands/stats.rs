@@ -341,6 +341,8 @@ pub fn get_streaks(db: State<'_, DbState>) -> Result<Streaks, String> {
                 UNION SELECT date(timestamp,'localtime') FROM movement_log WHERE completed = 1
                 UNION SELECT date(started_at,'localtime') FROM pomodoro_log
                        WHERE completed = 1 AND session_type = 'work'
+                UNION SELECT date(timestamp,'localtime') FROM diary_entries
+                UNION SELECT substr(scheduled_at,1,10) FROM dose_log WHERE status = 'taken'
              ) WHERE d IS NOT NULL",
         )
         .map_err(|e| e.to_string())?;

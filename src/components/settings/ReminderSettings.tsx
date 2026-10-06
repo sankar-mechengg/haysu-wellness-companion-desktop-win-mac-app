@@ -85,6 +85,37 @@ export default function ReminderSettings() {
         </p>
       </Card>
 
+      <Card padding="md" className="space-y-1">
+        <h4 className="text-sm font-semibold text-text-primary dark:text-text-primary-dark mb-2">
+          💊 Medicine reminders
+        </h4>
+        <Rows>
+          <Toggle
+            label="Remind me about medicines"
+            description="Manage your medicines and times on the dashboard's Health tab"
+            checked={config.medicine_reminders_enabled}
+            onChange={(v) => patch({ medicine_reminders_enabled: v })}
+          />
+          <Toggle
+            label="Always deliver, even in Do Not Disturb"
+            description="Doses also fire outside work hours and while you're away"
+            checked={config.medicine_override_dnd}
+            onChange={(v) => patch({ medicine_override_dnd: v })}
+            disabled={!config.medicine_reminders_enabled}
+          />
+          <Slider
+            label="Count a dose as missed after"
+            value={config.medicine_missed_after_min}
+            onChangeEnd={(v) => patch({ medicine_missed_after_min: v })}
+            min={15}
+            max={360}
+            step={15}
+            format={formatMinutes}
+            disabled={!config.medicine_reminders_enabled}
+          />
+        </Rows>
+      </Card>
+
       <Card padding="md">
         <Rows>
           <div className="flex items-center justify-between gap-4">
@@ -130,6 +161,10 @@ export default function ReminderSettings() {
             step={15}
             format={(v) => (v === 0 ? "Never" : `${v}s`)}
           />
+          <p className="text-[11px] text-text-secondary dark:text-text-secondary-dark">
+            Medicine popups never auto-dismiss; an unanswered dose stays due until it is marked or
+            counted as missed.
+          </p>
         </Rows>
       </Card>
     </div>

@@ -4,6 +4,7 @@ pub mod autostart;
 pub mod commands;
 pub mod config;
 pub mod db;
+pub mod health;
 pub mod hotkeys;
 pub mod notify;
 pub mod scheduler;
@@ -74,6 +75,12 @@ pub fn run() {
                 std::io::Error::other(e)
             })?;
             log::info!("database at {}", path.display());
+            if let Ok(conn) = db.conn.lock() {
+                let _ = conn.execute(
+                    "UPDATE pomodoro_log SET ended_at = ?1, completed = 0 WHERE ended_at IS NULL",
+                    [db::time::now_utc()],
+                );
+            }
             let config = ConfigState::load_from(&db);
             let cfg = config.get();
             let work_style = commands::user::current_work_style(&db);
@@ -93,6 +100,7 @@ pub fn run() {
                 log::warn!("autostart sync failed: {e}");
             }
 
+            scheduler::reload_medicines(&handle);
             scheduler::start(handle.clone());
 
             if cfg.onboarding_complete {
@@ -146,6 +154,25 @@ pub fn run() {
             commands::system::show_window,
             commands::system::hide_window,
             commands::system::quit_app,
+            // Health
+            commands::health::list_medicines,
+            commands::health::save_medicine,
+            commands::health::delete_medicine,
+            commands::health::get_dose_schedule,
+            commands::health::log_dose,
+            commands::health::snooze_dose,
+            commands::health::get_adherence,
+            commands::health::list_conditions,
+            commands::health::save_condition,
+            commands::health::delete_condition,
+            commands::health::list_diary,
+            commands::health::save_diary_entry,
+            commands::health::delete_diary_entry,
+            commands::health::get_symptom_suggestions,
+            commands::health::list_measurements,
+            commands::health::add_measurement,
+            commands::health::delete_measurement,
+            commands::health::measurement_kinds,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Haysu");

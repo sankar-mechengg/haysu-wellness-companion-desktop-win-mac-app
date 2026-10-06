@@ -3,6 +3,7 @@ import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { api, errorMessage } from "../../lib/api";
 import { formatClock, formatDurationShort } from "../../lib/format";
+import { slotTime } from "../../lib/health";
 import { checkForUpdate, installUpdate } from "../../lib/updater";
 import { useAppStore, useConfig, useLive } from "../../store/appStore";
 import AnimatedH from "../common/AnimatedH";
@@ -10,6 +11,7 @@ import AnimatedH from "../common/AnimatedH";
 const WIDTH = 260;
 const COMPACT_H = 56;
 const EXPANDED_H = 196;
+const EXPANDED_WITH_DOSE_H = 224;
 
 export default function FloatingWidget() {
   const live = useLive();
@@ -19,12 +21,16 @@ export default function FloatingWidget() {
   const [expanded, setExpanded] = useState(false);
   const [installing, setInstalling] = useState<number | null>(null);
 
+  const dose = live?.next_dose ?? null;
+  const hasDose = dose !== null;
+
   // Resize the native window with the content.
   useEffect(() => {
+    const h = expanded ? (hasDose ? EXPANDED_WITH_DOSE_H : EXPANDED_H) : COMPACT_H;
     getCurrentWindow()
-      .setSize(new LogicalSize(WIDTH, expanded ? EXPANDED_H : COMPACT_H))
+      .setSize(new LogicalSize(WIDTH, h))
       .catch(() => {});
-  }, [expanded]);
+  }, [expanded, hasDose]);
 
   // Silent update check shortly after launch.
   useEffect(() => {
@@ -61,7 +67,10 @@ export default function FloatingWidget() {
   // Primary line.
   let primary: string;
   let accent = "text-text-primary dark:text-text-primary-dark";
-  if (pomo.running) {
+  if (dose?.overdue) {
+    primary = `💊 ${dose.name} due`;
+    accent = "text-pill";
+  } else if (pomo.running) {
     const label =
       pomo.phase === "work" ? "Focus" : pomo.phase === "long_break" ? "Long break" : "Break";
     primary = `${pomo.paused ? "⏸" : "🍅"} ${label} ${formatClock(pomo.remaining_secs)}`;
@@ -87,6 +96,8 @@ export default function FloatingWidget() {
   const muted = "text-text-secondary dark:text-text-secondary-dark";
   const iconBtn =
     "w-7 h-7 inline-flex items-center justify-center rounded-lg text-xs hover:bg-surface-hover dark:hover:bg-surface-hover-dark transition-colors focus:outline-none";
+  const chip = (cls: string) =>
+    `px-1.5 h-5 rounded-md text-[10px] font-semibold transition-colors ${cls}`;
 
   return (
     <div className="h-screen w-screen flex items-start justify-center p-1">
@@ -127,7 +138,7 @@ export default function FloatingWidget() {
             <button
               type="button"
               onClick={onInstall}
-              className="px-1.5 h-6 rounded-md bg-move/15 text-move text-[10px] font-semibold hover:bg-move/25"
+              className={chip("bg-move/15 text-move hover:bg-move/25 h-6")}
               title={`Update to ${updateAvailable.version}`}
             >
               {installing === null ? "⬆ Update" : `${Math.round(installing * 100)}%`}
@@ -149,6 +160,28 @@ export default function FloatingWidget() {
         {/* Expanded panel */}
         {expanded && (
           <div className="px-3 pb-3 pt-1 space-y-2 border-t border-border/50 dark:border-border-dark/50 animate-fade-in">
+            {dose && (
+              <div className={row}>
+                <span className={muted}>💊 {dose.name}</span>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`font-mono font-medium tabular-nums ${dose.overdue ? "text-pill" : muted}`}
+                  >
+                    {dose.overdue ? "due" : slotTime(dose.scheduled_at)}
+                  </span>
+                  {dose.overdue && (
+                    <button
+                      type="button"
+                      className={chip("bg-pill/15 text-pill hover:bg-pill/25")}
+                      onClick={() => api.logDose(dose.medicine_id, dose.scheduled_at, "taken")}
+                      title="Mark as taken"
+                    >
+                      Taken
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             <div className={row}>
               <span className={muted}>💧 Water</span>
               <div className="flex items-center gap-1.5">
@@ -157,7 +190,7 @@ export default function FloatingWidget() {
                 </span>
                 <button
                   type="button"
-                  className="px-1.5 h-5 rounded-md bg-water/15 text-water text-[10px] font-semibold hover:bg-water/25"
+                  className={chip("bg-water/15 text-water hover:bg-water/25")}
                   onClick={() => api.logWater(true, config.water_amount_ml)}
                   title={`Log ${config.water_amount_ml} ml`}
                 >
@@ -173,7 +206,7 @@ export default function FloatingWidget() {
                 </span>
                 <button
                   type="button"
-                  className="px-1.5 h-5 rounded-md bg-move/15 text-move text-[10px] font-semibold hover:bg-move/25"
+                  className={chip("bg-move/15 text-move hover:bg-move/25")}
                   onClick={() => api.resetReminder("movement")}
                   title="Restart countdown"
                 >
@@ -191,7 +224,7 @@ export default function FloatingWidget() {
                     </span>
                     <button
                       type="button"
-                      className="px-1.5 h-5 rounded-md bg-tomato/15 text-tomato text-[10px] font-semibold hover:bg-tomato/25"
+                      className={chip("bg-tomato/15 text-tomato hover:bg-tomato/25")}
                       onClick={() => api.pomodoro("skip")}
                       title="Skip phase"
                     >
@@ -199,7 +232,7 @@ export default function FloatingWidget() {
                     </button>
                     <button
                       type="button"
-                      className="px-1.5 h-5 rounded-md bg-tomato/15 text-tomato text-[10px] font-semibold hover:bg-tomato/25"
+                      className={chip("bg-tomato/15 text-tomato hover:bg-tomato/25")}
                       onClick={() => api.pomodoro("stop")}
                       title="Stop"
                     >
@@ -209,7 +242,7 @@ export default function FloatingWidget() {
                 ) : (
                   <button
                     type="button"
-                    className="px-2 h-5 rounded-md bg-tomato/15 text-tomato text-[10px] font-semibold hover:bg-tomato/25"
+                    className={chip("bg-tomato/15 text-tomato hover:bg-tomato/25 px-2")}
                     onClick={() => api.pomodoro("start")}
                   >
                     Start {pomo.queued !== "work" ? "break" : "focus"}

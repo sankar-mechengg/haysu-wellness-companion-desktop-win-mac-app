@@ -4,6 +4,37 @@ All notable changes to Haysu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-10-07
+
+### Added
+
+- **Medicine reminders.** Add medicines with dose, instructions, times of day,
+  weekdays and an optional date range. Each dose pops up with Taken / Snooze /
+  Skip, fires even during Do Not Disturb, outside work hours and while you're
+  away (configurable), survives restarts, and is counted as missed after a
+  grace period. The dashboard's Health tab shows the day's schedule with
+  undo, a 7-day adherence bar, and lets you browse past and future days. The
+  widget, the dashboard strip and the tray tooltip surface the next or
+  overdue dose.
+- **Health diary.** Log how you feel any time: mood and energy (1–5), pain
+  (0–10), sleep hours, symptoms with suggestions, free notes, and an optional
+  link to a condition. Entries are editable and grouped by day.
+- **Health conditions.** Keep a list of current issues with severity, start
+  date and notes; mark them resolved and reopen them.
+- **Vitals and measurements.** Weight, blood pressure, heart rate,
+  temperature, blood glucose and SpO₂ with charts. A new weight updates the
+  profile and the water goal.
+- **Trends.** Mood/energy lines, pain and sleep, most-logged symptoms and
+  medicine adherence over 7, 30 or 90 days.
+- **Dark grey theme** is now the default dark look; a **Blue** variant is
+  available under Appearance → Dark style.
+- Diary entries and taken doses count towards the daily streak. Exports
+  include the new tables (JSON) and three extra CSV files.
+
+### Changed
+
+- Database schema version 3 (additive; existing data is untouched).
+
 ## [1.1.0] - 2026-10-06
 
 A ground-up rebuild of the backend and most of the UI. See `docs/AUDIT.md` for
@@ -93,6 +124,7 @@ the full list of issues found in 1.0.x.
 - Initial release: water and movement reminders, Pomodoro timer, floating
   widget, dashboard, onboarding, global hotkeys, autostart.
 
+[1.2.0]: https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app/compare/v1.0.0...v1.0.2
 [1.0.0]: https://github.com/sankar-mechengg/haysu-wellness-companion-desktop-win-mac-app/releases/tag/v1.0.0

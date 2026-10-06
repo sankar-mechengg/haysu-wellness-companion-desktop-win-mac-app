@@ -63,7 +63,7 @@ export default function WaterChart({ data, goalMl }: { data: DailyStats[]; goalM
               stroke="#60b8ff"
               strokeWidth={2.5}
               fill="url(#waterGradient)"
-              dot={{ r: 3.5, fill: "#60b8ff", strokeWidth: 2, stroke: t.dark ? "#22233c" : "#fff" }}
+              dot={{ r: 3.5, fill: "#60b8ff", strokeWidth: 2, stroke: t.surface }}
               activeDot={{ r: 5 }}
             />
           </AreaChart>

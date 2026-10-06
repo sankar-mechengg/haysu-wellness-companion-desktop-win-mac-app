@@ -1,17 +1,11 @@
 import Card from "../common/Card";
-import {
-  api,
-  type MovementEntry,
-  type PomodoroEntry,
-  type ReminderKind,
-  type WaterEntry,
-} from "../../lib/api";
+import { api, type MovementEntry, type PomodoroEntry, type WaterEntry } from "../../lib/api";
 import { formatTimeOfDay } from "../../lib/format";
 import { toast } from "../common/Toast";
 
 interface Row {
   key: string;
-  kind: ReminderKind;
+  kind: "water" | "movement" | "pomodoro";
   id: number;
   icon: string;
   label: string;

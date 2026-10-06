@@ -3,14 +3,15 @@
  */
 import { invoke } from "@tauri-apps/api/core";
 
-// ─── Types (mirror src-tauri/src/config.rs, db/models.rs, scheduler/mod.rs) ───
+// ─── Types (mirror src-tauri/src/config.rs, db/models.rs, scheduler/mod.rs, health/mod.rs) ───
 
 export type ReminderStyle = "popup" | "native" | "both";
 export type Theme = "light" | "dark" | "system";
+export type DarkVariant = "grey" | "blue";
 export type WorkStyle = "sedentary" | "moderate" | "active";
 export type PomodoroPhase = "idle" | "work" | "short_break" | "long_break";
 export type PauseReason = "dnd" | "schedule" | "idle";
-export type ReminderKind = "water" | "movement" | "pomodoro";
+export type ReminderKind = "water" | "movement" | "pomodoro" | "medicine";
 
 export interface AppConfig {
   water_interval_min: number;
@@ -52,6 +53,12 @@ export interface AppConfig {
   hotkey_toggle_dnd: string;
   hotkey_show_dashboard: string;
   hotkey_log_water: string;
+
+  dark_variant: DarkVariant;
+
+  medicine_reminders_enabled: boolean;
+  medicine_override_dnd: boolean;
+  medicine_missed_after_min: number;
 }
 
 export type ConfigPatch = Partial<AppConfig>;
@@ -104,6 +111,15 @@ export interface PomodoroSnapshot {
   queued: PomodoroPhase;
 }
 
+export interface NextDose {
+  medicine_id: number;
+  name: string;
+  dose: string;
+  /** Local slot `YYYY-MM-DD HH:MM`. */
+  scheduled_at: string;
+  overdue: boolean;
+}
+
 export interface AppStateSnapshot {
   water: CountdownSnapshot;
   movement: CountdownSnapshot;
@@ -111,6 +127,8 @@ export interface AppStateSnapshot {
   paused_reason: PauseReason | null;
   dnd: { enabled: boolean; until: string | null };
   idle_secs: number;
+  next_dose: NextDose | null;
+  doses_pending: number;
 }
 
 export interface ReminderEvent {
@@ -118,6 +136,17 @@ export interface ReminderEvent {
   kind: ReminderKind;
   message: string;
   data: string | null;
+}
+
+/** JSON carried in `ReminderEvent.data` for medicine reminders. */
+export interface MedicineReminderData {
+  medicine_id: number;
+  name: string;
+  dose: string;
+  instructions: string;
+  color: string;
+  scheduled_at: string;
+  first: boolean;
 }
 
 export interface PomodoroEvent {
@@ -179,6 +208,139 @@ export interface SystemInfo {
   data_dir: string | null;
 }
 
+// ─── Health ───
+
+export interface Medicine {
+  id: number;
+  name: string;
+  dose: string;
+  instructions: string;
+  times: string[];
+  days: number[];
+  active: boolean;
+  start_date: string | null;
+  end_date: string | null;
+  color: string;
+  created_at: string;
+}
+
+export interface MedicineInput {
+  id?: number;
+  name: string;
+  dose: string;
+  instructions: string;
+  times: string[];
+  days: number[];
+  active: boolean;
+  start_date: string | null;
+  end_date: string | null;
+  color: string;
+}
+
+export type DoseStatus = "pending" | "snoozed" | "taken" | "skipped" | "missed" | "upcoming";
+
+export interface DoseLog {
+  id: number;
+  medicine_id: number;
+  scheduled_at: string;
+  status: DoseStatus;
+  taken_at: string | null;
+  snoozed_until: string | null;
+  note: string;
+}
+
+export interface DoseSlot {
+  medicine_id: number;
+  name: string;
+  dose: string;
+  instructions: string;
+  color: string;
+  scheduled_at: string;
+  status: DoseStatus;
+  taken_at: string | null;
+  note: string;
+}
+
+export interface AdherenceStats {
+  days: number;
+  scheduled: number;
+  taken: number;
+  skipped: number;
+  missed: number;
+  pending: number;
+  adherence_pct: number;
+}
+
+export type ConditionStatus = "active" | "resolved";
+
+export interface Condition {
+  id: number;
+  name: string;
+  notes: string;
+  severity: number;
+  status: ConditionStatus;
+  started_on: string | null;
+  resolved_on: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConditionInput {
+  id?: number;
+  name: string;
+  notes: string;
+  severity: number;
+  status: ConditionStatus;
+  started_on: string | null;
+  resolved_on: string | null;
+}
+
+export interface DiaryEntry {
+  id: number;
+  timestamp: string;
+  date: string;
+  mood: number | null;
+  energy: number | null;
+  sleep_hours: number | null;
+  pain: number | null;
+  symptoms: string[];
+  notes: string;
+  condition_id: number | null;
+}
+
+export interface DiaryInput {
+  id?: number;
+  timestamp?: string;
+  mood: number | null;
+  energy: number | null;
+  sleep_hours: number | null;
+  pain: number | null;
+  symptoms: string[];
+  notes: string;
+  condition_id: number | null;
+}
+
+export type MeasurementKind =
+  "weight" | "blood_pressure" | "heart_rate" | "temperature" | "glucose" | "spo2";
+
+export interface Measurement {
+  id: number;
+  kind: MeasurementKind;
+  value: number;
+  value2: number | null;
+  unit: string;
+  measured_at: string;
+  notes: string;
+}
+
+export interface MeasurementInput {
+  kind: MeasurementKind;
+  value: number;
+  value2?: number | null;
+  measured_at?: string;
+  notes?: string;
+}
+
 // ─── Event names ───
 
 export const EVENTS = {
@@ -188,6 +350,7 @@ export const EVENTS = {
   config: "config-changed",
   profile: "profile-changed",
   activity: "activity-logged",
+  health: "health-changed",
   checkUpdates: "check-updates",
 } as const;
 
@@ -226,7 +389,8 @@ export const api = {
     invoke<number>("log_movement", { exerciseId, exerciseName, category, completed }),
   getMovementToday: () => invoke<MovementEntry[]>("get_movement_today"),
   getPomodoroToday: () => invoke<PomodoroEntry[]>("get_pomodoro_today"),
-  deleteEntry: (kind: ReminderKind, id: number) => invoke<void>("delete_entry", { kind, id }),
+  deleteEntry: (kind: "water" | "movement" | "pomodoro", id: number) =>
+    invoke<void>("delete_entry", { kind, id }),
   getTodayDate: () => invoke<string>("get_today_date"),
   getDailyStats: (date: string) => invoke<DailyStats>("get_daily_stats", { date }),
   getWeeklyStats: (startDate: string) => invoke<DailyStats[]>("get_weekly_stats", { startDate }),
@@ -251,6 +415,39 @@ export const api = {
     invoke<void>("show_window", { label }),
   hideWindow: (label: string) => invoke<void>("hide_window", { label }),
   quit: () => invoke<void>("quit_app"),
+
+  // Health · medicines
+  listMedicines: () => invoke<Medicine[]>("list_medicines"),
+  saveMedicine: (input: MedicineInput) => invoke<Medicine>("save_medicine", { input }),
+  deleteMedicine: (id: number) => invoke<void>("delete_medicine", { id }),
+  getDoseSchedule: (date?: string) =>
+    invoke<DoseSlot[]>("get_dose_schedule", { date: date ?? null }),
+  logDose: (
+    medicineId: number,
+    scheduledAt: string,
+    status: "taken" | "skipped" | "pending",
+    note?: string
+  ) => invoke<DoseLog>("log_dose", { medicineId, scheduledAt, status, note: note ?? null }),
+  snoozeDose: (medicineId: number, scheduledAt: string, minutes?: number) =>
+    invoke<void>("snooze_dose", { medicineId, scheduledAt, minutes: minutes ?? null }),
+  getAdherence: (days?: number) => invoke<AdherenceStats>("get_adherence", { days: days ?? null }),
+
+  // Health · conditions
+  listConditions: () => invoke<Condition[]>("list_conditions"),
+  saveCondition: (input: ConditionInput) => invoke<Condition>("save_condition", { input }),
+  deleteCondition: (id: number) => invoke<void>("delete_condition", { id }),
+
+  // Health · diary
+  listDiary: (from: string, to: string) => invoke<DiaryEntry[]>("list_diary", { from, to }),
+  saveDiaryEntry: (input: DiaryInput) => invoke<DiaryEntry>("save_diary_entry", { input }),
+  deleteDiaryEntry: (id: number) => invoke<void>("delete_diary_entry", { id }),
+  getSymptomSuggestions: () => invoke<string[]>("get_symptom_suggestions"),
+
+  // Health · measurements
+  listMeasurements: (kind?: MeasurementKind, days?: number) =>
+    invoke<Measurement[]>("list_measurements", { kind: kind ?? null, days: days ?? null }),
+  addMeasurement: (input: MeasurementInput) => invoke<Measurement>("add_measurement", { input }),
+  deleteMeasurement: (id: number) => invoke<void>("delete_measurement", { id }),
 };
 
 /** Turn any thrown value into a readable string. */

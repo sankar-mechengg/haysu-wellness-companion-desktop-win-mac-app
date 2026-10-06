@@ -16,6 +16,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::config::{AppConfig, ConfigState, ReminderStyle};
 use crate::db::{time, DbState};
+use crate::health::{self, MedEvent, MedicineTracker, NextDose};
 use pomodoro::{Phase, Pomodoro, Transition};
 
 // ─── Events ────────────────────────────────────────────────────────────────
@@ -64,6 +65,9 @@ pub struct AppStateSnapshot {
     pub paused_reason: Option<PauseReason>,
     pub dnd: DndSnapshot,
     pub idle_secs: u64,
+    /// Earliest unanswered or upcoming dose today.
+    pub next_dose: Option<NextDose>,
+    pub doses_pending: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -289,6 +293,7 @@ pub struct SchedulerState {
     /// Pending widget position to persist (debounced).
     widget_pos: Option<((i32, i32), Instant)>,
     last_tray_key: String,
+    pub medicines: MedicineTracker,
 }
 
 impl SchedulerState {
@@ -306,6 +311,7 @@ impl SchedulerState {
             pomodoro_log_id: None,
             widget_pos: None,
             last_tray_key: String::new(),
+            medicines: MedicineTracker::default(),
         }
     }
 
@@ -324,6 +330,8 @@ impl SchedulerState {
                 },
             },
             idle_secs: self.idle_secs,
+            next_dose: self.medicines.next_dose(health::now_local_naive()),
+            doses_pending: self.medicines.pending_count(),
         }
     }
 
@@ -403,6 +411,7 @@ fn tick(app: &AppHandle) {
     let mut pomo_events: Vec<PomodoroEvent> = Vec::new();
     let mut pomo_log_ops: Vec<PomoLogOp> = Vec::new();
     let mut widget_pos_to_save: Option<(i32, i32)> = None;
+    let mut dose_ops: Vec<DoseOp> = Vec::new();
     let snapshot;
     let tray_info;
     let tray_changed;
@@ -436,6 +445,60 @@ fn tick(app: &AppHandle) {
             } else {
                 st.water.resume(now);
                 st.movement.resume(now);
+            }
+        }
+
+        // Medicines: run even while reminders are paused when configured so.
+        if cfg.medicine_reminders_enabled {
+            let allowed = st.paused_reason.is_none() || cfg.medicine_override_dnd;
+            let missed_after = Duration::minutes(cfg.medicine_missed_after_min as i64);
+            let now_local = health::now_local_naive();
+            for ev in st.medicines.tick(now_local, allowed, missed_after) {
+                match ev {
+                    MedEvent::Due {
+                        medicine_id,
+                        scheduled_at,
+                        first,
+                    } => {
+                        let Some(m) = st.medicines.medicines.iter().find(|m| m.id == medicine_id)
+                        else {
+                            continue;
+                        };
+                        let data = serde_json::json!({
+                            "medicine_id": medicine_id,
+                            "name": m.name,
+                            "dose": m.dose,
+                            "instructions": m.instructions,
+                            "color": m.color,
+                            "scheduled_at": scheduled_at,
+                            "first": first,
+                        })
+                        .to_string();
+                        let message = if m.dose.is_empty() {
+                            format!("Time to take {}", m.name)
+                        } else {
+                            format!("Time to take {} ({})", m.name, m.dose)
+                        };
+                        dose_ops.push(DoseOp::Ensure {
+                            medicine_id,
+                            scheduled_at: scheduled_at.clone(),
+                        });
+                        let id = st.next_id();
+                        reminders.push(ReminderEvent {
+                            id,
+                            kind: "medicine",
+                            message,
+                            data: Some(data),
+                        });
+                    }
+                    MedEvent::Missed {
+                        medicine_id,
+                        scheduled_at,
+                    } => dose_ops.push(DoseOp::Missed {
+                        medicine_id,
+                        scheduled_at,
+                    }),
+                }
             }
         }
 
@@ -494,6 +557,9 @@ fn tick(app: &AppHandle) {
     }
 
     // ── Side effects, lock released ──
+    if !dose_ops.is_empty() {
+        apply_dose_ops(app, dose_ops);
+    }
     for op in pomo_log_ops {
         apply_pomo_log(app, op);
     }
@@ -528,6 +594,11 @@ fn tray_info_for(st: &SchedulerState, cfg: &AppConfig, now: DateTime<Utc>) -> Tr
         let w = st.water.remaining_secs(now) / 60;
         let m = st.movement.remaining_secs(now) / 60;
         let mut s = format!("Haysu — water in {w}m · move in {m}m");
+        if let Some(d) = st.medicines.next_dose(health::now_local_naive()) {
+            if d.overdue {
+                s.push_str(&format!(" · 💊 {} due", d.name));
+            }
+        }
         if st.pomodoro.is_running() {
             let p = st.pomodoro.remaining_secs(now);
             s.push_str(&format!(
@@ -547,6 +618,73 @@ fn tray_info_for(st: &SchedulerState, cfg: &AppConfig, now: DateTime<Utc>) -> Tr
         pomodoro_paused: st.pomodoro.is_paused(),
         dnd: cfg.dnd_enabled,
         tooltip,
+    }
+}
+
+enum DoseOp {
+    Ensure {
+        medicine_id: i64,
+        scheduled_at: String,
+    },
+    Missed {
+        medicine_id: i64,
+        scheduled_at: String,
+    },
+}
+
+fn apply_dose_ops(app: &AppHandle, ops: Vec<DoseOp>) {
+    let db = app.state::<DbState>();
+    let Ok(conn) = db.conn.lock() else { return };
+    let mut changed = false;
+    for op in ops {
+        let res = match op {
+            DoseOp::Ensure {
+                medicine_id,
+                scheduled_at,
+            } => {
+                changed = true;
+                health::store::ensure_dose_row(&conn, medicine_id, &scheduled_at)
+            }
+            DoseOp::Missed {
+                medicine_id,
+                scheduled_at,
+            } => {
+                changed = true;
+                log::info!("dose missed: medicine {medicine_id} at {scheduled_at}");
+                health::store::set_dose_status(
+                    &conn,
+                    medicine_id,
+                    &scheduled_at,
+                    "missed",
+                    None,
+                    None,
+                )
+                .map(|_| ())
+            }
+        };
+        if let Err(e) = res {
+            log::warn!("dose log failed: {e}");
+        }
+    }
+    drop(conn);
+    if changed {
+        let _ = app.emit(crate::commands::health::EV_HEALTH, "doses");
+    }
+}
+
+/// Reload medicines and today's dose rows into the tracker (startup and after edits).
+pub fn reload_medicines(app: &AppHandle) {
+    let db = app.state::<DbState>();
+    let loaded = db.conn.lock().ok().and_then(|conn| {
+        let meds = health::store::list_medicines(&conn).ok()?;
+        let logs = health::store::dose_logs_for_date(&conn, &time::today_local()).ok()?;
+        Some((meds, logs))
+    });
+    if let Some((meds, logs)) = loaded {
+        with_state(app, |st, _, _| {
+            st.medicines.reload(meds, &logs, health::now_local_naive());
+        });
+        emit_snapshot(app);
     }
 }
 
@@ -669,6 +807,7 @@ fn deliver_reminder(app: &AppHandle, cfg: &AppConfig, r: ReminderEvent) {
         let title = match r.kind {
             "water" => "Haysu · Water",
             "movement" => "Haysu · Move",
+            "medicine" => "Haysu · Medicine",
             _ => "Haysu · Pomodoro",
         };
         crate::notify::native(app, title, &r.message);

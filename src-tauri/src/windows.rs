@@ -6,7 +6,7 @@ use tauri::{
     WebviewWindowBuilder, Window, WindowEvent,
 };
 
-use crate::config::{AppConfig, ConfigState, Theme};
+use crate::config::{AppConfig, ConfigState, DarkVariant, Theme};
 use crate::scheduler::Scheduler;
 
 pub const WIDGET: &str = "widget";
@@ -54,9 +54,14 @@ pub fn ensure_window(app: &AppHandle, label: &str) -> Option<WebviewWindow> {
 
     let cfg = app.state::<ConfigState>().get();
     let builder = match cfg.theme {
-        Theme::Dark => builder
-            .theme(Some(tauri::Theme::Dark))
-            .background_color(tauri::window::Color(21, 22, 42, 255)),
+        Theme::Dark => {
+            builder
+                .theme(Some(tauri::Theme::Dark))
+                .background_color(match cfg.dark_variant {
+                    DarkVariant::Blue => tauri::window::Color(21, 22, 42, 255),
+                    DarkVariant::Grey => tauri::window::Color(24, 24, 27, 255),
+                })
+        }
         Theme::Light => builder
             .theme(Some(tauri::Theme::Light))
             .background_color(tauri::window::Color(246, 247, 251, 255)),
@@ -145,8 +150,21 @@ pub fn show_popup(app: &AppHandle) {
     if let Some(m) = monitor {
         let scale = m.scale_factor();
         let width = (440.0 * scale) as i32;
+        let height = (300.0 * scale) as i32;
         let x = m.position().x + (m.size().width as i32 - width) / 2;
-        let y = m.position().y + (28.0 * scale) as i32;
+        let mut y = m.position().y + (28.0 * scale) as i32;
+        // Keep clear of the widget if the user parked it along the top edge.
+        if let Some(widget) = app.get_webview_window(WIDGET) {
+            if widget.is_visible().unwrap_or(false) {
+                if let (Ok(wp), Ok(ws)) = (widget.outer_position(), widget.outer_size()) {
+                    let overlaps_x = wp.x < x + width && wp.x + ws.width as i32 > x;
+                    let overlaps_y = wp.y < y + height && wp.y + ws.height as i32 > y;
+                    if overlaps_x && overlaps_y {
+                        y = wp.y + ws.height as i32 + (8.0 * scale) as i32;
+                    }
+                }
+            }
+        }
         let _ = popup.set_position(PhysicalPosition::new(x, y));
     }
     let _ = popup.show();

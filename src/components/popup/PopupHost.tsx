@@ -1,12 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
-import { api, EVENTS, type ReminderEvent } from "../../lib/api";
+import { api, EVENTS, type MedicineReminderData, type ReminderEvent } from "../../lib/api";
 import { useTauriEvent } from "../../hooks/useTauriEvent";
 import WaterPopup from "./WaterPopup";
 import MovementPopup from "./MovementPopup";
 import PomodoroPopup from "./PomodoroPopup";
+import MedicinePopup from "./MedicinePopup";
 
 const WIDTH = 440;
+
+function parseMedicine(data: string | null): MedicineReminderData | null {
+  if (!data) return null;
+  try {
+    return JSON.parse(data) as MedicineReminderData;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Owns the reminder queue for the popup window and sizes the native window to
@@ -19,8 +29,11 @@ export default function PopupHost() {
 
   useTauriEvent<ReminderEvent>(EVENTS.reminder, (r) => {
     setQueue((q) => {
-      // Replace a pending reminder of the same kind rather than stacking it.
-      const rest = q.filter((x, i) => i === 0 || x.kind !== r.kind);
+      // Replace a pending reminder of the same kind rather than stacking it,
+      // except medicines, where each dose matters.
+      const rest = q.filter(
+        (x, i) => i === 0 || x.kind !== r.kind || (r.kind === "medicine" && x.data !== r.data)
+      );
       return [...rest, r];
     });
   });
@@ -52,6 +65,8 @@ export default function PopupHost() {
     return <div className="h-screen w-screen" />;
   }
 
+  const medicine = current.kind === "medicine" ? parseMedicine(current.data) : null;
+
   return (
     <div className="h-screen w-screen flex items-start justify-center pt-1">
       <div ref={cardRef} className="w-full px-1">
@@ -66,6 +81,13 @@ export default function PopupHost() {
             onDone={dismiss}
           />
         )}
+        {current.kind === "medicine" &&
+          (medicine ? (
+            <MedicinePopup key={current.id} data={medicine} onDone={dismiss} />
+          ) : (
+            // Malformed payload: drop it rather than block the queue.
+            <DropNow onDone={dismiss} />
+          ))}
         {queue.length > 1 && (
           <p className="text-center text-[10px] text-text-secondary dark:text-text-secondary-dark mt-1">
             +{queue.length - 1} more waiting
@@ -74,4 +96,11 @@ export default function PopupHost() {
       </div>
     </div>
   );
+}
+
+function DropNow({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    onDone();
+  }, [onDone]);
+  return null;
 }

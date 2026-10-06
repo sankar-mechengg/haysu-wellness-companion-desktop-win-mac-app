@@ -7,6 +7,8 @@ use tauri::State;
 
 use crate::db::models::{MovementEntry, PomodoroEntry, WaterEntry};
 use crate::db::{time, DbState};
+use crate::health::store as health_store;
+use crate::health::{Condition, DiaryEntry, DoseLog, Measurement, Medicine};
 
 #[derive(serde::Serialize)]
 pub struct ExportData {
@@ -15,6 +17,11 @@ pub struct ExportData {
     pub water_log: Vec<WaterEntry>,
     pub movement_log: Vec<MovementEntry>,
     pub pomodoro_log: Vec<PomodoroEntry>,
+    pub medicines: Vec<Medicine>,
+    pub dose_log: Vec<DoseLog>,
+    pub conditions: Vec<Condition>,
+    pub diary: Vec<DiaryEntry>,
+    pub measurements: Vec<Measurement>,
 }
 
 #[tauri::command]
@@ -80,6 +87,71 @@ pub fn export_csv(db: State<'_, DbState>, folder_path: String) -> Result<Vec<Str
     files.push(write_csv(
         folder,
         &format!("haysu_pomodoro_{stamp}.csv"),
+        &csv,
+    )?);
+
+    let mut csv = String::from("id,medicine_id,medicine,scheduled_at,status,taken_at,note\n");
+    for e in &data.dose_log {
+        let name = data
+            .medicines
+            .iter()
+            .find(|m| m.id == e.medicine_id)
+            .map(|m| m.name.as_str())
+            .unwrap_or("");
+        csv.push_str(&csv_row(&[
+            &e.id.to_string(),
+            &e.medicine_id.to_string(),
+            name,
+            &e.scheduled_at,
+            &e.status,
+            e.taken_at.as_deref().unwrap_or(""),
+            &e.note,
+        ]));
+    }
+    files.push(write_csv(
+        folder,
+        &format!("haysu_medicines_{stamp}.csv"),
+        &csv,
+    )?);
+
+    let mut csv = String::from(
+        "id,timestamp,date,mood,energy,sleep_hours,pain,symptoms,notes,condition_id\n",
+    );
+    for e in &data.diary {
+        csv.push_str(&csv_row(&[
+            &e.id.to_string(),
+            &e.timestamp,
+            &e.date,
+            &e.mood.map(|v| v.to_string()).unwrap_or_default(),
+            &e.energy.map(|v| v.to_string()).unwrap_or_default(),
+            &e.sleep_hours.map(|v| v.to_string()).unwrap_or_default(),
+            &e.pain.map(|v| v.to_string()).unwrap_or_default(),
+            &e.symptoms.join("; "),
+            &e.notes,
+            &e.condition_id.map(|v| v.to_string()).unwrap_or_default(),
+        ]));
+    }
+    files.push(write_csv(
+        folder,
+        &format!("haysu_diary_{stamp}.csv"),
+        &csv,
+    )?);
+
+    let mut csv = String::from("id,kind,value,value2,unit,measured_at,notes\n");
+    for e in &data.measurements {
+        csv.push_str(&csv_row(&[
+            &e.id.to_string(),
+            &e.kind,
+            &e.value.to_string(),
+            &e.value2.map(|v| v.to_string()).unwrap_or_default(),
+            &e.unit,
+            &e.measured_at,
+            &e.notes,
+        ]));
+    }
+    files.push(write_csv(
+        folder,
+        &format!("haysu_measurements_{stamp}.csv"),
         &csv,
     )?);
 
@@ -180,6 +252,11 @@ fn gather(db: &State<'_, DbState>) -> Result<ExportData, String> {
         water_log,
         movement_log,
         pomodoro_log,
+        medicines: health_store::list_medicines(&conn)?,
+        dose_log: health_store::all_dose_logs(&conn)?,
+        conditions: health_store::list_conditions(&conn)?,
+        diary: health_store::all_diary(&conn)?,
+        measurements: health_store::all_measurements(&conn)?,
     })
 }
 

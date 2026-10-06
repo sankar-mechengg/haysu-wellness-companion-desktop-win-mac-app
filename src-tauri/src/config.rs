@@ -24,6 +24,17 @@ pub enum ReminderStyle {
     Both,
 }
 
+/// Colour family used when the resolved theme is dark.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum DarkVariant {
+    /// Neutral dark grey (default).
+    #[default]
+    Grey,
+    /// Deep navy blue.
+    Blue,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum Theme {
@@ -86,6 +97,16 @@ pub struct AppConfig {
     pub hotkey_toggle_dnd: String,
     pub hotkey_show_dashboard: String,
     pub hotkey_log_water: String,
+
+    // Appearance (dark)
+    pub dark_variant: DarkVariant,
+
+    // Medicines
+    pub medicine_reminders_enabled: bool,
+    /// Fire dose reminders even during DND, outside work hours and when away.
+    pub medicine_override_dnd: bool,
+    /// Minutes after the slot before an unanswered dose counts as missed.
+    pub medicine_missed_after_min: u32,
 }
 
 impl Default for AppConfig {
@@ -130,6 +151,12 @@ impl Default for AppConfig {
             hotkey_toggle_dnd: "CmdOrCtrl+Shift+K".into(),
             hotkey_show_dashboard: "CmdOrCtrl+Shift+H".into(),
             hotkey_log_water: String::new(),
+
+            dark_variant: DarkVariant::Grey,
+
+            medicine_reminders_enabled: true,
+            medicine_override_dnd: true,
+            medicine_missed_after_min: 120,
         }
     }
 }
@@ -147,6 +174,7 @@ impl AppConfig {
         self.pomodoro_long_break_min = self.pomodoro_long_break_min.clamp(1, 120);
         self.pomodoro_sessions_before_long = self.pomodoro_sessions_before_long.clamp(1, 12);
         self.idle_threshold_min = self.idle_threshold_min.clamp(1, 120);
+        self.medicine_missed_after_min = self.medicine_missed_after_min.clamp(15, 720);
         if !is_hhmm(&self.schedule_start) {
             self.schedule_start = "09:00".into();
         }

@@ -41,7 +41,12 @@ launch attempt. Once installed, Haysu updates itself from GitHub releases.
 - **Global hotkeys**, fully customisable: toggle Pomodoro, toggle DND, open the
   dashboard, log a glass of water.
 - **Native notifications** as an alternative (or addition) to the popup.
-- **Light, dark and system theme.** Launch at login. In-app updater.
+- **Medicine reminders** with Taken / Snooze / Skip, missed-dose tracking and adherence.
+  They fire even during Do Not Disturb.
+- **Health diary** for mood, energy, pain, sleep, symptoms and notes, tied to the
+  conditions you're managing, plus vitals (weight, blood pressure, heart rate,
+  temperature, glucose, SpO₂) with trend charts.
+- **Light, dark (grey or blue) and system theme.** Launch at login. In-app updater.
 
 Everything is stored locally in a SQLite file. Nothing is sent anywhere.
 
@@ -81,7 +86,8 @@ src/                 React + TypeScript UI (one SPA, routed by ?window=)
   components/        UI per window plus shared controls
   lib/api.ts         typed bridge to every Rust command and event
 src-tauri/src/
-  scheduler/         countdowns, Pomodoro state machine, schedule, idle detection
+  scheduler/         countdowns, Pomodoro state machine, schedule, idle detection, dose tracker
+  health/            medicines, diary, conditions, measurements (models + SQL)
   commands/          Tauri commands (config, stats, export, timers, system)
   config.rs          typed AppConfig persisted in the settings table
   db/                SQLite bootstrap, migrations, models, timestamp helpers

@@ -18,6 +18,7 @@ export function useBootstrap() {
   const bumpActivity = useAppStore((s) => s.bumpActivity);
   const setResolvedTheme = useAppStore((s) => s.setResolvedTheme);
   const theme = useAppStore((s) => s.config?.theme ?? "light");
+  const darkVariant = useAppStore((s) => s.config?.dark_variant ?? "grey");
 
   useEffect(() => {
     let cancelled = false;
@@ -50,17 +51,18 @@ export function useBootstrap() {
   useTauriEvent<UserProfile>(EVENTS.profile, setProfile);
   useTauriEvent<string>(EVENTS.activity, () => bumpActivity());
 
-  // Theme → <html class="dark">
+  // Theme → <html class="dark theme-blue">
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
       const dark = theme === "dark" || (theme === "system" && media.matches);
       document.documentElement.classList.toggle("dark", dark);
+      document.documentElement.classList.toggle("theme-blue", darkVariant === "blue");
       setResolvedTheme(dark ? "dark" : "light");
     };
     apply();
     if (theme !== "system") return;
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
-  }, [theme, setResolvedTheme]);
+  }, [theme, darkVariant, setResolvedTheme]);
 }

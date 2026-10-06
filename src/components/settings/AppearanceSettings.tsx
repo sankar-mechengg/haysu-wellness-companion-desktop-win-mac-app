@@ -3,11 +3,12 @@ import Toggle from "../common/Toggle";
 import Segmented from "../common/Segmented";
 import { Rows, SectionHeader } from "../common/Section";
 import { useConfigPatch } from "../../hooks/useConfigPatch";
-import { useConfig } from "../../store/appStore";
-import type { Theme } from "../../lib/api";
+import { useAppStore, useConfig } from "../../store/appStore";
+import type { DarkVariant, Theme } from "../../lib/api";
 
 export default function AppearanceSettings() {
   const config = useConfig();
+  const resolved = useAppStore((s) => s.resolvedTheme);
   const patch = useConfigPatch();
   if (!config) return null;
 
@@ -19,25 +20,52 @@ export default function AppearanceSettings() {
       />
 
       <Card padding="md">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
-              Theme
-            </p>
-            <p className="text-xs text-text-secondary dark:text-text-secondary-dark">
-              System follows your OS setting
-            </p>
+        <Rows>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                Theme
+              </p>
+              <p className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                System follows your OS setting
+              </p>
+            </div>
+            <Segmented<Theme>
+              value={config.theme}
+              onChange={(v) => patch({ theme: v })}
+              options={[
+                { value: "light", label: "Light", icon: "☀️" },
+                { value: "dark", label: "Dark", icon: "🌙" },
+                { value: "system", label: "System", icon: "🖥️" },
+              ]}
+            />
           </div>
-          <Segmented<Theme>
-            value={config.theme}
-            onChange={(v) => patch({ theme: v })}
-            options={[
-              { value: "light", label: "Light", icon: "☀️" },
-              { value: "dark", label: "Dark", icon: "🌙" },
-              { value: "system", label: "System", icon: "🖥️" },
-            ]}
-          />
-        </div>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-text-primary dark:text-text-primary-dark">
+                Dark style
+              </p>
+              <p className="text-xs text-text-secondary dark:text-text-secondary-dark">
+                {resolved === "dark" ? "Applied now" : "Used whenever the dark theme is active"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                className="w-5 h-5 rounded-md border border-border dark:border-border-dark"
+                style={{ background: config.dark_variant === "blue" ? "#15162a" : "#18181b" }}
+                aria-hidden
+              />
+              <Segmented<DarkVariant>
+                value={config.dark_variant}
+                onChange={(v) => patch({ dark_variant: v })}
+                options={[
+                  { value: "grey", label: "Grey" },
+                  { value: "blue", label: "Blue" },
+                ]}
+              />
+            </div>
+          </div>
+        </Rows>
       </Card>
 
       <Card padding="md">

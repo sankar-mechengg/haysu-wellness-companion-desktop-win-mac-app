@@ -1,5 +1,6 @@
 import { api } from "../../lib/api";
 import { formatClock, formatDurationShort } from "../../lib/format";
+import { slotTime } from "../../lib/health";
 import { useLive } from "../../store/appStore";
 
 /** Thin strip showing the live countdowns and status. */
@@ -15,6 +16,8 @@ export default function LiveTimers() {
       : live.paused_reason === "idle"
         ? "Paused while away"
         : null;
+
+  const dose = live.next_dose;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -40,6 +43,20 @@ export default function LiveTimers() {
           ? `${live.pomodoro.phase === "work" ? "Focus" : "Break"} ${formatClock(live.pomodoro.remaining_secs)}${live.pomodoro.paused ? " (paused)" : ""}`
           : "Pomodoro idle"}
       </span>
+      {dose && (
+        <button
+          type="button"
+          onClick={() => dose.overdue && api.logDose(dose.medicine_id, dose.scheduled_at, "taken")}
+          title={dose.overdue ? "Mark as taken" : "Next dose"}
+          className={`${pill} ${
+            dose.overdue
+              ? "bg-pill/20 text-pill animate-pulse-soft hover:bg-pill/30"
+              : "bg-pill/10 text-pill cursor-default"
+          }`}
+        >
+          💊 {dose.name} {dose.overdue ? "due" : `at ${slotTime(dose.scheduled_at)}`}
+        </button>
+      )}
       <div className="flex-1" />
       <button
         type="button"

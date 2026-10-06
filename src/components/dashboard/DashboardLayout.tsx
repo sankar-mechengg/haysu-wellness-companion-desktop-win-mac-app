@@ -1,14 +1,16 @@
 import { useState } from "react";
 import TodayView from "./TodayView";
 import WeekView from "./WeekView";
+import HealthView from "./health/HealthView";
 import ExportButton from "./ExportButton";
 import UpdateBanner from "./UpdateBanner";
 import AnimatedH from "../common/AnimatedH";
 import Segmented from "../common/Segmented";
 import { api } from "../../lib/api";
-import { useProfile } from "../../store/appStore";
+import { useHealthSync } from "../../hooks/useHealth";
+import { useLive, useProfile } from "../../store/appStore";
 
-type Tab = "today" | "week";
+type Tab = "today" | "week" | "health";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -22,6 +24,10 @@ function greeting(): string {
 export default function DashboardLayout() {
   const [tab, setTab] = useState<Tab>("today");
   const profile = useProfile();
+  const live = useLive();
+  useHealthSync();
+
+  const pending = live?.doses_pending ?? 0;
 
   return (
     <div className="h-screen w-screen bg-bg dark:bg-bg-dark flex flex-col">
@@ -59,12 +65,17 @@ export default function DashboardLayout() {
           options={[
             { value: "today", label: "Today", icon: "📋" },
             { value: "week", label: "This week", icon: "📊" },
+            {
+              value: "health",
+              label: pending > 0 ? `Health (${pending} due)` : "Health",
+              icon: "💊",
+            },
           ]}
         />
       </header>
 
       <main className="flex-1 overflow-y-auto px-6 pb-6">
-        {tab === "today" ? <TodayView /> : <WeekView />}
+        {tab === "today" ? <TodayView /> : tab === "week" ? <WeekView /> : <HealthView />}
       </main>
     </div>
   );

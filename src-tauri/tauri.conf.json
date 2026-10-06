@@ -52,7 +52,7 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": true,
-    "category": "Healthcare",
+    "category": "Healthcare and Fitness",
     "shortDescription": "Desktop wellness companion",
     "longDescription": "Water reminders, guided movement breaks and a Pomodoro timer that live in your system tray.",
     "icon": [

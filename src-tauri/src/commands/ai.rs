@@ -269,7 +269,6 @@ pub async fn run_chat(app: &AppHandle, input: SendInput) -> Result<SendResult, S
         system,
         messages: history,
         max_tokens: cfg.ai_max_tokens.clamp(256, 8000),
-        temperature: 0.6,
     };
     let app2 = app.clone();
     let result = client::stream_chat(req, |delta| {
@@ -332,6 +331,7 @@ fn model_supports_vision(provider: Provider, model: &str) -> bool {
         Provider::Openai => {
             !(m.starts_with("o1-mini") || m.contains("instruct") || m.starts_with("gpt-3.5"))
         }
+        Provider::Gemini => true,
         Provider::Zai => m.contains("4.5v") || m.contains("4.6v") || m.contains("-v"),
         Provider::Openrouter => !(m.contains("deepseek") && !m.contains("vl")),
     }
@@ -341,6 +341,7 @@ fn vision_hint(provider: Provider) -> &'static str {
     match provider {
         Provider::Anthropic => "claude-sonnet-5-5",
         Provider::Openai => "gpt-5",
+        Provider::Gemini => "gemini-2.5-flash",
         Provider::Zai => "glm-4.5v",
         Provider::Openrouter => "anthropic/claude-sonnet-4.5",
     }

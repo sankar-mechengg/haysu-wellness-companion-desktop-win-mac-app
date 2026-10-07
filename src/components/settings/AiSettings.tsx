@@ -20,6 +20,7 @@ import { useConfig } from "../../store/appStore";
 const MODEL_FIELD: Record<AiProvider, keyof AppConfig> = {
   anthropic: "ai_model_anthropic",
   openai: "ai_model_openai",
+  gemini: "ai_model_gemini",
   zai: "ai_model_zai",
   openrouter: "ai_model_openrouter",
 };
@@ -96,6 +97,9 @@ function ProviderCard({ p, active }: { p: ProviderStatus; active: boolean }) {
         toast.info("No model list from this provider; type the id manually.");
       } else {
         setModels([...new Set([model, ...list])]);
+        // Back to the dropdown so the fetched list is what the user sees.
+        setCustom(false);
+        setCustomModel("");
         toast.success(`${list.length} models loaded`);
       }
     } catch (e) {
@@ -263,7 +267,7 @@ export default function AiSettings() {
                 {selection === "auto"
                   ? status?.active
                     ? `Auto picks the first configured key: ${providers.find((p) => p.provider === status.active)?.label}`
-                    : "Auto picks the first configured key (Claude → GPT → Z.AI → OpenRouter)"
+                    : "Auto picks the first configured key (Claude → GPT → Gemini → Z.AI → OpenRouter)"
                   : "Always use this provider when it has a key"}
               </p>
             </div>

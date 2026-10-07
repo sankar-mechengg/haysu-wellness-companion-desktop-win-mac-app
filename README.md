@@ -56,7 +56,7 @@ light and dark, the widget, and reminder popups.
 - **Health diary** for mood, energy, pain, sleep, symptoms and notes, tied to the
   conditions you're managing, plus vitals (weight, blood pressure, heart rate,
   temperature, glucose, SpO₂) with trend charts.
-- **Haysu AI**: bring your own Anthropic, OpenAI, Z.AI or OpenRouter key and ask
+- **Haysu AI**: bring your own Anthropic, OpenAI, Google Gemini, Z.AI or OpenRouter key and ask
   anything about your week, food, sleep or symptoms. Quick actions for a daily
   briefing, meal plans that fit your diet, what to wear from today's weather, a
   posture / grooming photo check, a weekly review and a summary for your doctor.

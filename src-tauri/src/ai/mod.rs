@@ -17,14 +17,16 @@ use crate::config::AppConfig;
 pub enum Provider {
     Anthropic,
     Openai,
+    Gemini,
     Zai,
     Openrouter,
 }
 
 impl Provider {
-    pub const ALL: [Provider; 4] = [
+    pub const ALL: [Provider; 5] = [
         Provider::Anthropic,
         Provider::Openai,
+        Provider::Gemini,
         Provider::Zai,
         Provider::Openrouter,
     ];
@@ -33,6 +35,7 @@ impl Provider {
         match self {
             Provider::Anthropic => "anthropic",
             Provider::Openai => "openai",
+            Provider::Gemini => "gemini",
             Provider::Zai => "zai",
             Provider::Openrouter => "openrouter",
         }
@@ -42,6 +45,7 @@ impl Provider {
         match s {
             "anthropic" => Some(Provider::Anthropic),
             "openai" => Some(Provider::Openai),
+            "gemini" => Some(Provider::Gemini),
             "zai" => Some(Provider::Zai),
             "openrouter" => Some(Provider::Openrouter),
             _ => None,
@@ -52,6 +56,7 @@ impl Provider {
         match self {
             Provider::Anthropic => "Anthropic (Claude)",
             Provider::Openai => "OpenAI (GPT)",
+            Provider::Gemini => "Google (Gemini)",
             Provider::Zai => "Z.AI (GLM)",
             Provider::Openrouter => "OpenRouter",
         }
@@ -62,6 +67,7 @@ impl Provider {
         match self {
             Provider::Anthropic => "ai_key_anthropic",
             Provider::Openai => "ai_key_openai",
+            Provider::Gemini => "ai_key_gemini",
             Provider::Zai => "ai_key_zai",
             Provider::Openrouter => "ai_key_openrouter",
         }
@@ -71,6 +77,7 @@ impl Provider {
         match self {
             Provider::Anthropic => "claude-sonnet-5-5",
             Provider::Openai => "gpt-5",
+            Provider::Gemini => "gemini-2.5-flash",
             Provider::Zai => "glm-4.6",
             Provider::Openrouter => "anthropic/claude-sonnet-4.5",
         }
@@ -97,6 +104,13 @@ impl Provider {
                 "gpt-4o",
                 "o4-mini",
             ],
+            Provider::Gemini => &[
+                "gemini-2.5-pro",
+                "gemini-2.5-flash",
+                "gemini-2.5-flash-lite",
+                "gemini-2.0-flash",
+                "gemini-2.0-flash-lite",
+            ],
             Provider::Zai => &[
                 "glm-4.6",
                 "glm-4.5",
@@ -122,6 +136,7 @@ impl Provider {
         match self {
             Provider::Anthropic => "https://api.anthropic.com/v1",
             Provider::Openai => "https://api.openai.com/v1",
+            Provider::Gemini => "https://generativelanguage.googleapis.com/v1beta/openai",
             Provider::Zai => "https://api.z.ai/api/paas/v4",
             Provider::Openrouter => "https://openrouter.ai/api/v1",
         }
@@ -131,6 +146,7 @@ impl Provider {
         match self {
             Provider::Anthropic => "https://console.anthropic.com/settings/keys",
             Provider::Openai => "https://platform.openai.com/api-keys",
+            Provider::Gemini => "https://aistudio.google.com/app/apikey",
             Provider::Zai => "https://z.ai/manage-apikey/apikey-list",
             Provider::Openrouter => "https://openrouter.ai/settings/keys",
         }
@@ -207,6 +223,7 @@ pub fn model_for(cfg: &AppConfig, p: Provider) -> String {
     let m = match p {
         Provider::Anthropic => &cfg.ai_model_anthropic,
         Provider::Openai => &cfg.ai_model_openai,
+        Provider::Gemini => &cfg.ai_model_gemini,
         Provider::Zai => &cfg.ai_model_zai,
         Provider::Openrouter => &cfg.ai_model_openrouter,
     };

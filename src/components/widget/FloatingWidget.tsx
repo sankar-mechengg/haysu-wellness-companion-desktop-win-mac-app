@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
-import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  currentMonitor,
+  getCurrentWindow,
+  LogicalSize,
+  PhysicalPosition,
+} from "@tauri-apps/api/window";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { api, errorMessage } from "../../lib/api";
 import { formatClock, formatDurationShort } from "../../lib/format";
@@ -12,6 +17,8 @@ const WIDTH = 260;
 const COMPACT_H = 56;
 const EXPANDED_H = 196;
 const EXPANDED_WITH_DOSE_H = 224;
+/** Within this many physical pixels of the top edge the widget snaps and docks. */
+const DOCK_SNAP_PX = 28;
 
 export default function FloatingWidget() {
   const live = useLive();
@@ -20,6 +27,9 @@ export default function FloatingWidget() {
   const setUpdateAvailable = useAppStore((s) => s.setUpdateAvailable);
   const [expanded, setExpanded] = useState(false);
   const [installing, setInstalling] = useState<number | null>(null);
+  const [docked, setDocked] = useState(false);
+  const [hover, setHover] = useState(false);
+  const snapping = useRef(false);
 
   const dose = live?.next_dose ?? null;
   const hasDose = dose !== null;
@@ -31,6 +41,46 @@ export default function FloatingWidget() {
       .setSize(new LogicalSize(WIDTH, h))
       .catch(() => {});
   }, [expanded, hasDose]);
+
+  // Dock detection: when the window sits against the top of its monitor it
+  // becomes a half-pill tab; dragging it down again undocks it.
+  useEffect(() => {
+    const win = getCurrentWindow();
+    let unlisten: (() => void) | null = null;
+    let timer: number | null = null;
+    const check = async () => {
+      try {
+        const [pos, mon] = await Promise.all([win.outerPosition(), currentMonitor()]);
+        if (!mon) return;
+        const top = mon.position.y;
+        const dy = pos.y - top;
+        if (dy > -DOCK_SNAP_PX && dy <= DOCK_SNAP_PX) {
+          if (dy !== 0 && !snapping.current) {
+            snapping.current = true;
+            await win.setPosition(new PhysicalPosition(pos.x, top));
+            snapping.current = false;
+          }
+          setDocked(true);
+        } else {
+          setDocked(false);
+        }
+      } catch {
+        /* window gone */
+      }
+    };
+    check();
+    win
+      .onMoved(() => {
+        if (timer) window.clearTimeout(timer);
+        timer = window.setTimeout(check, 180);
+      })
+      .then((u) => (unlisten = u))
+      .catch(() => {});
+    return () => {
+      if (timer) window.clearTimeout(timer);
+      unlisten?.();
+    };
+  }, []);
 
   // Silent update check shortly after launch.
   useEffect(() => {
@@ -99,12 +149,48 @@ export default function FloatingWidget() {
   const chip = (cls: string) =>
     `px-1.5 h-5 rounded-md text-[10px] font-semibold transition-colors ${cls}`;
 
+  // Docked and not hovered: a half-pill tab peeking out of the top edge.
+  const tucked = docked && !hover && !expanded;
+  const attention = dose?.overdue || (pomo.running && !pomo.paused);
+
   return (
-    <div className="h-screen w-screen flex items-start justify-center p-1">
+    <div
+      className="h-screen w-screen flex items-start justify-center p-1"
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      {/* Tab shown while tucked. Sits on top of the (hidden) bar so hover works. */}
       <div
-        className={`w-full rounded-2xl border backdrop-blur-xl select-none overflow-hidden transition-colors
+        data-tauri-drag-region
+        className={`absolute top-0 left-1/2 -translate-x-1/2 h-7 w-[72px] rounded-b-full border border-t-0 flex items-end justify-center pb-1 cursor-pointer select-none
+          bg-white/95 dark:bg-surface-dark/95 backdrop-blur-xl
+          ${dnd ? "border-border/60 dark:border-border-dark/60" : "border-haysu-200/70 dark:border-haysu-500/30"}
+          transition-all duration-300 ease-out
+          ${tucked ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none"}`}
+        style={{
+          boxShadow: tucked
+            ? "0 6px 16px rgba(59,147,247,0.18), 0 2px 6px rgba(0,0,0,0.10)"
+            : "none",
+        }}
+        title={primary}
+      >
+        <AnimatedH
+          size={16}
+          loading={pomo.running && !pomo.paused}
+          color={dnd ? "#9ca3af" : attention ? "#ff7b7b" : "#3b93f7"}
+        />
+        {attention && (
+          <span className="absolute -right-0.5 top-1 w-2 h-2 rounded-full bg-tomato animate-pulse-soft" />
+        )}
+      </div>
+
+      <div
+        className={`w-full rounded-2xl border backdrop-blur-xl select-none overflow-hidden
           bg-white/90 dark:bg-surface-dark/90
-          ${dnd ? "border-border/60 dark:border-border-dark/60" : "border-haysu-200/70 dark:border-haysu-500/30"}`}
+          ${docked ? "rounded-t-none border-t-0" : ""}
+          ${dnd ? "border-border/60 dark:border-border-dark/60" : "border-haysu-200/70 dark:border-haysu-500/30"}
+          transition-all duration-300 ease-out origin-top
+          ${tucked ? "opacity-0 -translate-y-[110%] scale-95 pointer-events-none" : "opacity-100 translate-y-0 scale-100"}`}
         style={{
           boxShadow: dnd
             ? "0 4px 14px rgba(0,0,0,0.10)"
@@ -116,7 +202,7 @@ export default function FloatingWidget() {
           <div
             data-tauri-drag-region
             className={`h-8 w-4 flex items-center justify-center rounded-md ${muted} text-[10px] tracking-tighter`}
-            title="Drag to move"
+            title={docked ? "Drag down to undock" : "Drag to move · drop at the top edge to dock"}
           >
             ⋮⋮
           </div>

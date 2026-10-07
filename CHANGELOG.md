@@ -4,6 +4,28 @@ All notable changes to Haysu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-10-07
+
+### Added
+
+- **Google Gemini** as a Haysu AI provider (Gemini 2.5 Pro / Flash and more),
+  with its own key, model list and vision support.
+- **Docked widget.** Drop the widget against the top edge of the screen and it
+  tucks away as a small half-pill; hover to slide the full bar out. Drag it
+  away from the edge to undock.
+
+### Fixed
+
+- OpenAI (and other providers) rejected requests with `temperature` /
+  `max_tokens` errors (400). Haysu no longer sends a temperature and retries
+  once with the parameter the model accepts.
+- Choosing *Custom* and then fetching the provider's models now returns to the
+  dropdown.
+- *Release notes* and *GitHub* buttons in About did nothing: the opener
+  permission lacked a URL scope.
+- GitHub Actions now run only for tagged releases (and manual runs / pull
+  requests), not on every push.
+
 ## [1.3.0] - 2026-10-07
 
 ### Added

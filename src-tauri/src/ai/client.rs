@@ -14,7 +14,6 @@ pub struct ChatRequest {
     pub system: String,
     pub messages: Vec<ChatMessage>,
     pub max_tokens: u32,
-    pub temperature: f32,
 }
 
 fn http() -> Result<reqwest::Client, String> {
@@ -92,18 +91,58 @@ fn anthropic_messages(messages: &[ChatMessage]) -> Vec<Value> {
 
 // ─── Streaming ─────────────────────────────────────────────────────────────
 
-/// Send the conversation and stream the reply. Returns the full text.
-pub async fn stream_chat(
-    req: ChatRequest,
-    mut on_delta: impl FnMut(&str),
-) -> Result<String, String> {
-    let client = http()?;
-    let (url, builder) = match req.provider {
+/// How the output limit is named for the OpenAI-style providers. Newer OpenAI
+/// models only accept `max_completion_tokens`; everyone else wants `max_tokens`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum LimitParam {
+    MaxTokens,
+    MaxCompletionTokens,
+}
+
+impl LimitParam {
+    fn name(self) -> &'static str {
+        match self {
+            LimitParam::MaxTokens => "max_tokens",
+            LimitParam::MaxCompletionTokens => "max_completion_tokens",
+        }
+    }
+    fn other(self) -> LimitParam {
+        match self {
+            LimitParam::MaxTokens => LimitParam::MaxCompletionTokens,
+            LimitParam::MaxCompletionTokens => LimitParam::MaxTokens,
+        }
+    }
+    fn default_for(p: Provider) -> LimitParam {
+        match p {
+            Provider::Openai => LimitParam::MaxCompletionTokens,
+            _ => LimitParam::MaxTokens,
+        }
+    }
+}
+
+/// A 400 that names a parameter we can drop or rename and try once more.
+fn is_param_rejection(status: reqwest::StatusCode, body: &str) -> bool {
+    let b = body.to_ascii_lowercase();
+    status.as_u16() == 400
+        && (b.contains("max_tokens")
+            || b.contains("max_completion_tokens")
+            || b.contains("temperature")
+            || b.contains("unsupported parameter")
+            || b.contains("unsupported value"))
+}
+
+fn build_request(
+    client: &reqwest::Client,
+    req: &ChatRequest,
+    limit: LimitParam,
+) -> (String, reqwest::RequestBuilder) {
+    // No temperature anywhere: several models (OpenAI reasoning models, GPT-5)
+    // reject anything but the default, and the default is fine for us.
+    match req.provider {
         Provider::Anthropic => {
             let body = json!({
                 "model": req.model,
                 "max_tokens": req.max_tokens,
-                "temperature": req.temperature,
                 "system": req.system,
                 "messages": anthropic_messages(&req.messages),
                 "stream": true,
@@ -118,19 +157,13 @@ pub async fn stream_chat(
                     .json(&body),
             )
         }
-        Provider::Openai | Provider::Zai | Provider::Openrouter => {
+        Provider::Openai | Provider::Gemini | Provider::Zai | Provider::Openrouter => {
             let mut body = json!({
                 "model": req.model,
                 "messages": openai_messages(&req.system, &req.messages),
                 "stream": true,
-                "temperature": req.temperature,
             });
-            // Newer OpenAI models reject max_tokens in favour of max_completion_tokens.
-            if req.provider == Provider::Openai {
-                body["max_completion_tokens"] = json!(req.max_tokens);
-            } else {
-                body["max_tokens"] = json!(req.max_tokens);
-            }
+            body[limit.name()] = json!(req.max_tokens);
             let url = format!("{}/chat/completions", req.provider.base_url());
             let mut b = client
                 .post(url.clone())
@@ -146,7 +179,17 @@ pub async fn stream_chat(
             }
             (url, b)
         }
-    };
+    }
+}
+
+/// Send the conversation and stream the reply. Returns the full text.
+pub async fn stream_chat(
+    req: ChatRequest,
+    mut on_delta: impl FnMut(&str),
+) -> Result<String, String> {
+    let client = http()?;
+    let mut limit = LimitParam::default_for(req.provider);
+    let (url, builder) = build_request(&client, &req, limit);
     log::info!("ai: {} {} via {}", req.provider.id(), req.model, url);
 
     let resp = builder.send().await.map_err(|e| {
@@ -156,10 +199,28 @@ pub async fn stream_chat(
             e.to_string()
         }
     })?;
+    let mut resp = resp;
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
-        return Err(describe_error(status, &body));
+        if req.provider != Provider::Anthropic && is_param_rejection(status, &body) {
+            // Swap the limit parameter and try once more.
+            limit = limit.other();
+            log::info!(
+                "ai: retrying with {} after: {}",
+                limit.name(),
+                body.chars().take(200).collect::<String>()
+            );
+            let (_, retry) = build_request(&client, &req, limit);
+            resp = retry.send().await.map_err(|e| e.to_string())?;
+            let status = resp.status();
+            if !status.is_success() {
+                let body = resp.text().await.unwrap_or_default();
+                return Err(describe_error(status, &body));
+            }
+        } else {
+            return Err(describe_error(status, &body));
+        }
     }
 
     let mut full = String::new();
@@ -236,7 +297,7 @@ pub async fn list_models(provider: Provider, api_key: &str) -> Result<Vec<String
             .get(format!("{}/models", provider.base_url()))
             .bearer_auth(api_key),
         Provider::Openrouter => client.get(format!("{}/models", provider.base_url())),
-        Provider::Zai => client
+        Provider::Zai | Provider::Gemini => client
             .get(format!("{}/models", provider.base_url()))
             .bearer_auth(api_key),
     };
@@ -259,7 +320,8 @@ pub async fn list_models(provider: Provider, api_key: &str) -> Result<Vec<String
         .and_then(|d| d.as_array())
         .map(|arr| {
             arr.iter()
-                .filter_map(|m| m.get("id").and_then(|i| i.as_str()).map(|s| s.to_string()))
+                .filter_map(|m| m.get("id").and_then(|i| i.as_str()))
+                .map(|id| id.strip_prefix("models/").unwrap_or(id).to_string())
                 .collect()
         })
         .unwrap_or_default();
@@ -288,7 +350,6 @@ pub async fn test_key(provider: Provider, api_key: &str, model: &str) -> Result<
             images: vec![],
         }],
         max_tokens: 16,
-        temperature: 0.0,
     };
     let text = stream_chat(req, |_| {}).await?;
     Ok(format!(

@@ -64,6 +64,7 @@ export interface AppConfig {
   ai_provider: "auto" | AiProvider;
   ai_model_anthropic: string;
   ai_model_openai: string;
+  ai_model_gemini: string;
   ai_model_zai: string;
   ai_model_openrouter: string;
   ai_share_health: boolean;
@@ -89,7 +90,7 @@ export interface AppConfig {
   hotkey_open_assistant: string;
 }
 
-export type AiProvider = "anthropic" | "openai" | "zai" | "openrouter";
+export type AiProvider = "anthropic" | "openai" | "gemini" | "zai" | "openrouter";
 
 export type ConfigPatch = Partial<AppConfig>;
 

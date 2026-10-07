@@ -113,6 +113,7 @@ pub struct AppConfig {
     pub ai_provider: String,
     pub ai_model_anthropic: String,
     pub ai_model_openai: String,
+    pub ai_model_gemini: String,
     pub ai_model_zai: String,
     pub ai_model_openrouter: String,
     pub ai_share_health: bool,
@@ -195,6 +196,7 @@ impl Default for AppConfig {
             ai_provider: "auto".into(),
             ai_model_anthropic: String::new(),
             ai_model_openai: String::new(),
+            ai_model_gemini: String::new(),
             ai_model_zai: String::new(),
             ai_model_openrouter: String::new(),
             ai_share_health: true,
@@ -238,7 +240,7 @@ impl AppConfig {
         self.medicine_missed_after_min = self.medicine_missed_after_min.clamp(15, 720);
         self.ai_max_tokens = self.ai_max_tokens.clamp(256, 8000);
         self.auto_backup_keep = self.auto_backup_keep.clamp(1, 60);
-        if !["auto", "anthropic", "openai", "zai", "openrouter"]
+        if !["auto", "anthropic", "openai", "gemini", "zai", "openrouter"]
             .contains(&self.ai_provider.as_str())
         {
             self.ai_provider = "auto".into();

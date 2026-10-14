@@ -4,6 +4,19 @@ All notable changes to Haysu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.3.2] - 2026-10-14
+
+### Changed
+
+- **Docked widget, refined.** While docked and idle the widget window shrinks
+  to just the half-pill tab, so only hovering the H slides the bar out;
+  moving the cursor nearby no longer triggers it. Click the bar for the full
+  panel; clicking anywhere outside tucks it away again. Opening the dashboard,
+  settings or onboarding also tucks it.
+- A docked widget stays in front while you use it and drops behind other
+  windows after five idle seconds; hovering the tab brings it forward again.
+  Undocked, the *Always on top* preference applies as before.
+
 ## [1.3.1] - 2026-10-07
 
 ### Added

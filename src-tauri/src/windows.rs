@@ -1,6 +1,7 @@
 //! Window management: lazy creation, show/hide, close interception and the
 //! floating widget's remembered position.
 
+use tauri::Emitter;
 use tauri::{
     AppHandle, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder, Window, WindowEvent,
@@ -108,6 +109,9 @@ pub fn has_effects(app: &AppHandle, label: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Emitted (payload: window label) whenever a main window is shown or created.
+pub const EV_WINDOW_SHOWN: &str = "window-shown";
+
 /// Windows that are created from `tauri.conf.json` and must never be destroyed.
 const PERSISTENT: &[&str] = &[WIDGET, POPUP];
 
@@ -117,6 +121,8 @@ fn url_for(label: &str) -> WebviewUrl {
 
 /// Show an existing window or create it. Returns the window on success.
 pub fn ensure_window(app: &AppHandle, label: &str) -> Option<WebviewWindow> {
+    // The widget tucks itself away whenever a main window comes up.
+    let _ = app.emit(EV_WINDOW_SHOWN, label);
     if let Some(win) = app.get_webview_window(label) {
         let _ = win.unminimize();
         let _ = win.show();

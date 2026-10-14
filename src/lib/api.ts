@@ -597,6 +597,7 @@ export const EVENTS = {
   importFile: "import-file",
   openAssistant: "open-assistant",
   openSettingsTab: "open-settings-tab",
+  windowShown: "window-shown",
 } as const;
 
 // ─── Commands ───

@@ -4,6 +4,16 @@ All notable changes to Haysu are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [1.3.3] - 2026-10-15
+
+### Fixed
+
+- An invisible area below the docked widget swallowed clicks while Haysu was
+  running. The reminder popup window was shown before its page was listening
+  (typically a reminder due right at launch), so it stayed open, empty and
+  transparent over that part of the screen. Reminders are now buffered until
+  the popup page picks them up, and an empty popup hides itself.
+
 ## [1.3.2] - 2026-10-14
 
 ### Changed

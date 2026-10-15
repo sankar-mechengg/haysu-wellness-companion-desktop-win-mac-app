@@ -3,7 +3,7 @@
 use tauri::{AppHandle, Manager};
 
 use crate::config::ConfigState;
-use crate::scheduler::{self, AppStateSnapshot};
+use crate::scheduler::{self, AppStateSnapshot, PendingPopups, ReminderEvent};
 use crate::windows;
 
 #[tauri::command]
@@ -46,5 +46,18 @@ pub fn pomodoro_action(app: AppHandle, action: String) {
 
 #[tauri::command]
 pub fn hide_popup(app: AppHandle) {
+    if let Ok(mut v) = app.state::<PendingPopups>().0.lock() {
+        v.clear();
+    }
     windows::hide_popup(&app);
+}
+
+/// Reminders the popup window has not displayed yet (drained on read).
+#[tauri::command]
+pub fn popup_pending(app: AppHandle) -> Vec<ReminderEvent> {
+    app.state::<PendingPopups>()
+        .0
+        .lock()
+        .map(|mut v| std::mem::take(&mut *v))
+        .unwrap_or_default()
 }

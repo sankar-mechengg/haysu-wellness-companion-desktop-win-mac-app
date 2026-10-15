@@ -646,6 +646,7 @@ export const api = {
   pomodoro: (action: "start" | "pause" | "resume" | "toggle" | "stop" | "skip") =>
     invoke<void>("pomodoro_action", { action }),
   hidePopup: () => invoke<void>("hide_popup"),
+  popupPending: () => invoke<ReminderEvent[]>("popup_pending"),
 
   // System
   getSystemInfo: () => invoke<SystemInfo>("get_system_info"),

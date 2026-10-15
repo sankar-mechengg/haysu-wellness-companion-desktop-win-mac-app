@@ -106,6 +106,7 @@ pub fn run() {
                 std::collections::HashSet::new(),
             )));
             app.manage(commands::backup::PendingImport(Mutex::new(None)));
+            app.manage(scheduler::PendingPopups::default());
             app.manage(Arc::new(Mutex::new(SchedulerState::new(&cfg, work_style))));
 
             #[cfg(target_os = "macos")]
@@ -203,6 +204,7 @@ pub fn run() {
             commands::timers::reset_reminder,
             commands::timers::pomodoro_action,
             commands::timers::hide_popup,
+            commands::timers::popup_pending,
             // System
             commands::system::get_system_info,
             commands::system::show_window,

@@ -71,6 +71,15 @@ pub struct AppStateSnapshot {
     pub doses_pending: usize,
 }
 
+/// Reminders shown as a popup but not yet picked up by the popup webview.
+///
+/// The popup window is shown *before* the event is emitted; if its webview is
+/// still loading (first launch, reload) the event would be lost and the
+/// transparent window would sit there invisibly eating clicks. The webview
+/// drains this on mount instead.
+#[derive(Default)]
+pub struct PendingPopups(pub Mutex<Vec<ReminderEvent>>);
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ReminderEvent {
     pub id: u64,
@@ -935,6 +944,14 @@ fn deliver_reminder(app: &AppHandle, cfg: &AppConfig, r: ReminderEvent) {
         crate::notify::native(app, title, &r.message);
     }
     if popup {
+        if let Some(pending) = app.try_state::<PendingPopups>() {
+            if let Ok(mut v) = pending.0.lock() {
+                v.push(r.clone());
+                if v.len() > 20 {
+                    v.remove(0);
+                }
+            }
+        }
         crate::windows::show_popup(app);
     }
     let _ = app.emit(EV_REMINDER, &r);

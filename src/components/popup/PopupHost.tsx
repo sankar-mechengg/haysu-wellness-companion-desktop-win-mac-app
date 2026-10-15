@@ -39,6 +39,7 @@ export default function PopupHost() {
     setQueue((q) => {
       // Replace a pending reminder of the same kind rather than stacking it,
       // except medicines and care routines, where each one matters.
+      if (q.some((x) => x.id === r.id)) return q;
       const keepEach = r.kind === "medicine" || r.kind === "care";
       const rest = q.filter(
         (x, i) => i === 0 || x.kind !== r.kind || (keepEach && x.data !== r.data)
@@ -46,6 +47,33 @@ export default function PopupHost() {
       return [...rest, r];
     });
   });
+
+  // Reminders delivered before this webview was listening (first launch,
+  // reload). If there are none, the window must not stay open: an empty
+  // transparent popup still blocks clicks underneath it.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .popupPending()
+      .then((pending) => {
+        if (cancelled) return;
+        if (pending.length === 0) {
+          setQueue((q) => {
+            if (q.length === 0) api.hidePopup().catch(() => {});
+            return q;
+          });
+          return;
+        }
+        setQueue((q) => {
+          const seen = new Set(q.map((x) => x.id));
+          return [...q, ...pending.filter((p) => !seen.has(p.id))];
+        });
+      })
+      .catch(() => api.hidePopup().catch(() => {}));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const dismiss = useCallback(() => {
     setQueue((q) => {
